@@ -1,0 +1,6 @@
+node_modules
+cache
+abi
+out
+yarn-error.log
+.vscode

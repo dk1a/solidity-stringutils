@@ -1,0 +1,196 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.17;
+
+import { PRBTest } from "@prb/test/src/PRBTest.sol";
+import { Assertions } from "../src/test/Assertions.sol";
+
+import { Slice, toSlice } from "../src/Slice.sol";
+
+using { toSlice } for bytes;
+
+contract SliceAssertionsTest is PRBTest, Assertions {
+    /// @dev simple byte-by-byte comparison to test more complicated comparisons
+    // TODO while this is hard to get wrong, maybe still test it?
+    function naiveCmp(bytes memory b1, bytes memory b2) internal pure returns (int256) {
+        uint256 shortest = b1.length < b2.length ? b1.length : b2.length;
+        for (uint256 i; i < shortest; i++) {
+            if (b1[i] < b2[i]) {
+                return -1;
+            } else if (b1[i] > b2[i]) {
+                return 1;
+            }
+        }
+        if (b1.length < b2.length) {
+            return -1;
+        } else if (b1.length > b2.length) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+    /// @dev split calldata bytes in half
+    function b1b2(bytes calldata b) internal pure returns (bytes memory b1, bytes memory b2) {
+        b1 = b[:b.length / 2];
+        // b2 can be 1 byte longer sometimes
+        b2 = b[b.length / 2:];
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                        EQUALITY
+    //////////////////////////////////////////////////////////////////////////*/
+
+    function testEq(bytes memory b) public {
+        // compare new assertions
+        assertEq(b.toSlice(), b.toSlice());
+        assertEq(b.toSlice(), b);
+        assertEq(b, b.toSlice());
+
+        assertLte(b.toSlice(), b.toSlice());
+        assertLte(b.toSlice(), b);
+        assertLte(b, b.toSlice());
+
+        assertGte(b.toSlice(), b.toSlice());
+        assertGte(b.toSlice(), b);
+        assertGte(b, b.toSlice());
+        // to the existing ones
+        assertEq(b.toSlice().copyToBytes(), b.toSlice().copyToBytes());
+        assertEq(b.toSlice().copyToBytes(), b);
+        assertEq(b, b.toSlice().copyToBytes());
+    }
+
+    function testFailEq(bytes memory b1, bytes memory b2) public {
+        vm.assume(keccak256(b1) != keccak256(b2));
+        assertEq(b1.toSlice(), b2.toSlice());
+    }
+
+    function testNotEq(bytes memory b1, bytes memory b2) public {
+        vm.assume(keccak256(b1) != keccak256(b2));
+        // compare new assertions
+        assertNotEq(b1.toSlice(), b2.toSlice());
+        assertNotEq(b1.toSlice(), b2);
+        assertNotEq(b1, b2.toSlice());
+        // to the existing ones
+        assertNotEq(b1.toSlice().copyToBytes(), b2.toSlice().copyToBytes());
+        assertNotEq(b1.toSlice().copyToBytes(), b2);
+        assertNotEq(b1, b2.toSlice().copyToBytes());
+    }
+
+    function testFailNotEq(bytes memory b) public {
+        assertNotEq(b.toSlice(), b.toSlice());
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                    LESS-THAN
+    //////////////////////////////////////////////////////////////////////////*/
+
+    function testLt(bytes calldata _b) public {
+        (bytes memory b1, bytes memory b2) = b1b2(_b);
+        vm.assume(naiveCmp(b1, b2) < 0);
+
+        assertLt(b1.toSlice(), b2.toSlice());
+        assertLt(b1.toSlice(), b2);
+        assertLt(b1, b2.toSlice());
+        assertLt(b1, b2);
+
+        assertLte(b1.toSlice(), b2.toSlice());
+        assertLte(b1.toSlice(), b2);
+        assertLte(b1, b2.toSlice());
+        assertLte(b1, b2);
+    }
+
+    function testFailLt(bytes calldata _b) public {
+        (bytes memory b1, bytes memory b2) = b1b2(_b);
+        vm.assume(naiveCmp(b1, b2) > 0);
+
+        assertLt(b1.toSlice(), b2.toSlice());
+    }
+
+    function testFailLt__ForEq(bytes memory b) public {
+        assertLt(b.toSlice(), b.toSlice());
+    }
+
+    function testFailLte(bytes calldata _b) public {
+        (bytes memory b1, bytes memory b2) = b1b2(_b);
+        vm.assume(naiveCmp(b1, b2) > 0);
+
+        assertLte(b1.toSlice(), b2.toSlice());
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                    GREATER-THAN
+    //////////////////////////////////////////////////////////////////////////*/
+
+    function testGt(bytes calldata _b) public {
+        (bytes memory b1, bytes memory b2) = b1b2(_b);
+        vm.assume(naiveCmp(b1, b2) > 0);
+
+        assertGt(b1.toSlice(), b2.toSlice());
+        assertGt(b1.toSlice(), b2);
+        assertGt(b1, b2.toSlice());
+        assertGt(b1, b2);
+
+        assertGte(b1.toSlice(), b2.toSlice());
+        assertGte(b1.toSlice(), b2);
+        assertGte(b1, b2.toSlice());
+        assertGte(b1, b2);
+    }
+
+    function testFailGt(bytes calldata _b) public {
+        (bytes memory b1, bytes memory b2) = b1b2(_b);
+        vm.assume(naiveCmp(b1, b2) < 0);
+
+        assertGt(b1.toSlice(), b2.toSlice());
+    }
+
+    function testFailGt__ForEq(bytes memory b) public {
+        assertGt(b.toSlice(), b.toSlice());
+    }
+
+    function testFailGte(bytes calldata _b) public {
+        (bytes memory b1, bytes memory b2) = b1b2(_b);
+        vm.assume(naiveCmp(b1, b2) < 0);
+
+        assertGte(b1.toSlice(), b2.toSlice());
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                    CONTAINS
+    //////////////////////////////////////////////////////////////////////////*/
+
+    function testContains(bytes calldata _b) public {
+        bytes memory b1 = _b;
+        bytes memory b2 = _b[_b.length / 3 : _b.length * 2 / 3];
+
+        assertContains(b1.toSlice(), b2.toSlice());
+        assertContains(b1.toSlice(), b2);
+        assertContains(b1, b2.toSlice());
+        assertContains(b1, b2);
+    }
+
+    function testFailContains(bytes calldata _b) public {
+        bytes memory b1 = _b;
+        bytes memory b2 = _b;
+        // change 1 byte
+        b2[0] = bytes1(uint8(b2[0]) ^ uint8(0x01));
+
+        assertContains(b1.toSlice(), b2.toSlice());
+    }
+
+    function testFailContains__1Byte(bytes calldata _b) public {
+        bytes1 pat = bytes1(keccak256(abi.encode(_b, "1Byte")));
+
+        bytes memory b1 = _b;
+        bytes memory b2 = new bytes(1);
+        b2[0] = pat;
+        // replace all pat
+        for (uint256 i; i < b1.length; i++) {
+            if (b1[i] == pat) {
+                b1[i] = ~pat;
+            }
+        }
+
+        assertContains(b1.toSlice(), b2.toSlice());
+    }
+}

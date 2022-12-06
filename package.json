@@ -1,0 +1,27 @@
+{
+  "name": "@dk1a/solidity-stringutils",
+  "version": "0.0.0",
+  "author": "dk1a <dk1a@protonmail.com>",
+  "license": "MIT",
+  "description": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dk1a/solidity-stringutils.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "prepare": "husky install",
+    "test": "forge test",
+    "build": "forge build",
+    "version": "conventional-changelog -p angular -i CHANGELOG.md -s && git add CHANGELOG.md"
+  },
+  "files": [
+    "/src"
+  ],
+  "devDependencies": {
+    "@prb/test": "^0.2.1",
+    "husky": "^8.0.2"
+  }
+}
