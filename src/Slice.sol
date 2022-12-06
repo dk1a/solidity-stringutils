@@ -75,7 +75,7 @@ using {
     cmp, eq, ne, lt, lte, gt, gte,
     // index
     get, first, last,
-    splitAt, getSubslice,
+    splitAt, getSubslice, getBefore, getAfter,
     // search
     find, rfind, contains,
     startsWith, endsWith,
@@ -199,7 +199,8 @@ function copyToBytes32(Slice self) pure returns (bytes32 b) {
     uint256 selfPtr = self.ptr();
 
     // mask removes any trailing bytes
-    uint256 mask = leftMask(self.len());
+    uint256 selfLen = self.len();
+    uint256 mask = leftMask(selfLen > 32 ? 32 : selfLen);
 
     /// @solidity memory-safe-assembly
     assembly {
@@ -322,7 +323,7 @@ function splitAt(Slice self, uint256 mid) pure returns (Slice, Slice) {
 }
 
 /**
- * @dev Returns a subslice [start..end) of `self`.
+ * @dev Returns a subslice [start:end] of `self`.
  * Reverts if start/end are out of bounds.
  */
 function getSubslice(Slice self, uint256 start, uint256 end) pure returns (Slice) {
@@ -331,6 +332,29 @@ function getSubslice(Slice self, uint256 start, uint256 end) pure returns (Slice
     // end - start is safe because start <= end
     unchecked {
         return Slice__.fromRawParts(self.ptr() + start, end - start);
+    }
+}
+
+/**
+ * @dev Returns a subslice [:index] of `self`.
+ * Reverts if `index` > length.
+ */
+function getBefore(Slice self, uint256 index) pure returns (Slice) {
+    uint256 selfLen = self.len();
+    if (index > selfLen) revert Slice__OutOfBounds();
+    return Slice__.fromRawParts(self.ptr(), index);
+}
+
+/**
+ * @dev Returns a subslice [index:] of `self`.
+ * Reverts if `index` >= length.
+ */
+function getAfter(Slice self, uint256 index) pure returns (Slice) {
+    uint256 selfLen = self.len();
+    if (index >= selfLen) revert Slice__OutOfBounds();
+    // safe because index <= selfLen (ptr+len is implicitly safe)
+    unchecked {
+        return Slice__.fromRawParts(self.ptr() + index, selfLen - index);
     }
 }
 
