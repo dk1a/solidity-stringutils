@@ -9,6 +9,18 @@ The library is WIP, but StrSlice already has a similar amount of functions to [A
 - Optional [PRBTest](https://github.com/paulrberg/prb-test) extension with assertions like `assertContains` and `assertLt` for both slices and native `bytes`, `string`
 - `Slice` and `StrSlice` are value types, not structs
 
+## Install
+
+### Node
+```sh
+yarn add @dk1a/solidity-stringutils
+```
+
+### Forge
+```sh
+forge install --no-commit dk1a/solidity-stringutils
+```
+
 ## StrSlice
 
 ```solidity
