@@ -93,6 +93,7 @@ using {
     startsWith, endsWith,
     // modify
     stripPrefix, stripSuffix,
+    splitOnce, rsplitOnce,
     replacen,
     // iteration
     chars
@@ -313,6 +314,52 @@ function stripSuffix(StrSlice self, StrSlice pattern) pure returns (StrSlice res
     return StrSlice.wrap(Slice.unwrap(
         self.asSlice().stripSuffix(pattern.asSlice())
     ));
+}
+
+/**
+ * @dev Splits a slice into 2 on the first match of `pattern`.
+ * If found == true, `prefix` and `suffix` will be strictly before and after the match.
+ * If found == false, `prefix` will be the entire string and `suffix` will be empty.
+ */
+function splitOnce(StrSlice self, StrSlice pattern)
+    pure
+    returns (bool found, StrSlice prefix, StrSlice suffix)
+{
+    uint256 index = self.find(pattern);
+    if (index == type(uint256).max) {
+        return (false, self, StrSlice.wrap(0));
+    } else {
+        prefix = StrSlice.wrap(Slice.unwrap(
+            self.asSlice().getBefore(index)
+        ));
+        suffix = StrSlice.wrap(Slice.unwrap(
+            self.asSlice().getAfter(index + pattern.len())
+        ));
+        return (true, prefix, suffix);
+    }
+}
+
+/**
+ * @dev Splits a slice into 2 on the last match of `pattern`.
+ * If found == true, `prefix` and `suffix` will be strictly before and after the match.
+ * If found == false, `prefix` will be empty and `suffix` will be the entire string.
+ */
+function rsplitOnce(StrSlice self, StrSlice pattern)
+    pure
+    returns (bool found, StrSlice prefix, StrSlice suffix)
+{
+    uint256 index = self.rfind(pattern);
+    if (index == type(uint256).max) {
+        return (false, StrSlice.wrap(0), self);
+    } else {
+        prefix = StrSlice.wrap(Slice.unwrap(
+            self.asSlice().getBefore(index)
+        ));
+        suffix = StrSlice.wrap(Slice.unwrap(
+            self.asSlice().getAfter(index + pattern.len())
+        ));
+        return (true, prefix, suffix);
+    }
 }
 
 /**

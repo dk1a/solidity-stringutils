@@ -3,12 +3,13 @@
 pragma solidity ^0.8.17;
 
 import { PRBTest } from "@prb/test/src/PRBTest.sol";
+import { StrSliceAssertions } from "../src/test/StrSliceAssertions.sol";
 
 import { StrSlice, toSlice, StrSlice__InvalidCharBoundary } from "../src/StrSlice.sol";
 
 using { toSlice } for string;
 
-contract StrSliceTest is PRBTest {
+contract StrSliceTest is PRBTest, StrSliceAssertions {
     function testToString() public {
         string memory _s = unicode"Hello, world!";
         assertEq(_s, _s.toSlice().toString());
@@ -105,7 +106,7 @@ contract StrSliceTest is PRBTest {
         uint256 index = s1.toSlice().find(s2.toSlice());
         assertEq(index, 6);
         (, StrSlice rSlice) = s1.toSlice().splitAt(index);
-        assertEq(rSlice.toString(), unicode"んにちはこんにちは34");
+        assertEq(rSlice, unicode"んにちはこんにちは34");
     }
 
     function testRfind() public {
@@ -114,7 +115,7 @@ contract StrSliceTest is PRBTest {
         uint256 index = s1.toSlice().rfind(s2.toSlice());
         assertEq(index, 21);
         (, StrSlice rSlice) = s1.toSlice().splitAt(index);
-        assertEq(rSlice.toString(), unicode"んにちは34");
+        assertEq(rSlice, unicode"んにちは34");
     }
 
     function testContains() public {
@@ -127,6 +128,76 @@ contract StrSliceTest is PRBTest {
         string memory s1 = unicode"「lorem ipsum」の典型的なテキストのほかにも、原典からの距離の様々なバリエーションが存在する。他のバージョンでは、ラテン語にはあまり登場しないか存在しない";
         string memory s2 = unicode"0";
         assertFalse(s1.toSlice().contains(s2.toSlice()));
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                    MODIFY
+    //////////////////////////////////////////////////////////////////////////*/
+
+    function testStripPrefix() public {
+        StrSlice slice = string(unicode"こんにちは").toSlice();
+        assertEq(slice.stripPrefix(string(unicode"こん").toSlice()), string(unicode"にちは"));
+        assertEq(slice.stripPrefix(slice),                           "");
+        assertEq(slice.stripPrefix(string("").toSlice()),            slice);
+        assertEq(slice.stripPrefix(string(unicode"は").toSlice()),   slice);
+        assertEq(slice.stripPrefix(string(unicode"こんにちはは").toSlice()), slice);
+    }
+
+    function testStripPrefix__FromEmpty() public {
+        StrSlice slice = string("").toSlice();
+        assertEq(slice.stripPrefix(string(unicode"こ").toSlice()), slice);
+        assertEq(slice.stripPrefix(string("").toSlice()),          slice);
+    }
+
+    function testStripSuffix() public {
+        StrSlice slice = string(unicode"こんにちは").toSlice();
+        assertEq(slice.stripSuffix(string(unicode"ちは").toSlice()), string(unicode"こんに"));
+        assertEq(slice.stripSuffix(slice),                           "");
+        assertEq(slice.stripSuffix(string("").toSlice()),            slice);
+        assertEq(slice.stripSuffix(string(unicode"こ").toSlice()),   slice);
+        assertEq(slice.stripSuffix(string(unicode"ここんにちは").toSlice()), slice);
+    }
+
+    function testStripSuffix__FromEmpty() public {
+        StrSlice slice = string("").toSlice();
+        assertEq(slice.stripSuffix(string(unicode"こ").toSlice()), slice);
+        assertEq(slice.stripSuffix(string("").toSlice()),          slice);
+    }
+
+    function testSplitOnce() public {
+        StrSlice slice = string(unicode"こんにちはこんにちは").toSlice();
+        StrSlice pat = string(unicode"に").toSlice();
+        (bool found, StrSlice prefix, StrSlice suffix) = slice.splitOnce(pat);
+        assertTrue(found);
+        assertEq(prefix, unicode"こん");
+        assertEq(suffix, unicode"ちはこんにちは");
+    }
+
+    function testSplitOnce__NotFound() public {
+        StrSlice slice = string(unicode"こんにちはこんにちは").toSlice();
+        StrSlice pat = string(unicode"こに").toSlice();
+        (bool found, StrSlice prefix, StrSlice suffix) = slice.splitOnce(pat);
+        assertFalse(found);
+        assertEq(prefix, unicode"こんにちはこんにちは");
+        assertEq(suffix, unicode"");
+    }
+
+    function testRsplitOnce() public {
+        StrSlice slice = string(unicode"こんにちはこんにちは").toSlice();
+        StrSlice pat = string(unicode"に").toSlice();
+        (bool found, StrSlice prefix, StrSlice suffix) = slice.rsplitOnce(pat);
+        assertTrue(found);
+        assertEq(prefix, unicode"こんにちはこん");
+        assertEq(suffix, unicode"ちは");
+    }
+
+    function testRsplitOnce__NotFound() public {
+        StrSlice slice = string(unicode"こんにちはこんにちは").toSlice();
+        StrSlice pat = string(unicode"こに").toSlice();
+        (bool found, StrSlice prefix, StrSlice suffix) = slice.rsplitOnce(pat);
+        assertFalse(found);
+        assertEq(prefix, unicode"");
+        assertEq(suffix, unicode"こんにちはこんにちは");
     }
 
     // TODO more tests
