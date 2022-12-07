@@ -24,8 +24,47 @@ function mload8(uint256 ptr) pure returns (uint8 item) {
 }
 
 /**
+ * @dev Copy `n` memory bytes.
+ * WARNING: Does not handle pointer overlap!
+ */
+function memcpy(uint256 ptrDest, uint256 ptrSrc, uint256 length) pure {
+    // Copy word-length chunks while possible
+    for(; length >= 32; length -= 32) {
+        assembly {
+            mstore(ptrDest, mload(ptrSrc))
+        }
+        ptrDest += 32;
+        ptrSrc += 32;
+    }
+    if (length == 0) return;
+
+    // Copy remaining bytes
+    bytes32 data;
+    assembly {
+        data := mload(ptrSrc)
+    }
+    mstoreN(ptrDest, data, length);
+}
+
+/**
+ * @dev mstore `n` bytes (left-aligned) of `data`
+ */
+function mstoreN(uint256 ptrDest, bytes32 data, uint256 n) pure {
+    uint256 mask = leftMask(n);
+    assembly {
+        mstore(ptrDest,
+            or(
+                // store the left part
+                and(data, mask),
+                // preserve the right part
+                and(mload(ptrDest), not(mask))
+            )
+        )
+    }
+}
+
+/**
  * @dev Copy `n` memory bytes using identity precompile.
- * TODO test overlap
  */
 function memmove(uint256 ptrDest, uint256 ptrSrc, uint256 n) view {
     /// @solidity memory-safe-assembly
@@ -134,44 +173,3 @@ function leftMask(uint256 length) pure returns (uint256) {
         return ~((1 << (8 * (32 - length))) - 1);
     }
 }
-
-
-// TODO Should precompile be replaced? it does demand view instead of pure.
-// also relevant https://github.com/ethereum/solidity/issues/12127
-/*
-function memmove(uint256 ptrDest, uint256 ptrSrc, uint256 length) pure {
-    // Copy word-length chunks while possible
-    for(; length >= 32; length -= 32) {
-        assembly {
-            mstore(ptrDest, mload(ptrSrc))
-        }
-        ptrDest += 32;
-        ptrSrc += 32;
-    }
-    if (length == 0) return;
-
-    // Copy remaining bytes
-    bytes32 data;
-    assembly {
-        data := mload(ptrSrc)
-    }
-    mstoreN(ptrDest, data, length);
-}
-
-/**
- * @dev mstore `n` bytes (left-aligned) of `data`
- *
-function mstoreN(uint256 ptrDest, bytes32 data, uint256 n) pure {
-    uint256 mask = leftMask(n);
-    assembly {
-        mstore(ptrDest,
-            or(
-                // store the left part
-                and(data, mask),
-                // preserve the right part
-                and(mload(ptrDest), not(mask))
-            )
-        )
-    }
-}
-*/

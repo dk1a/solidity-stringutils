@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import { mload8, memmove, memcmp, memeq, leftMask } from "./utils/mem.sol";
+import { mload8, memcpy, memcmp, memeq, leftMask } from "./utils/mem.sol";
 import { memchr, memrchr } from "./utils/memchr.sol";
 import { PackPtrLen } from "./utils/PackPtrLen.sol";
 
@@ -112,14 +112,14 @@ function isEmpty(Slice self) pure returns (bool) {
  * @dev Copies `Slice` to a new `bytes`.
  * The `Slice` will NOT point to the new `bytes`.
  */
-function toBytes(Slice self) view returns (bytes memory b) {
+function toBytes(Slice self) pure returns (bytes memory b) {
     b = new bytes(self.len());
     uint256 bPtr;
     assembly {
         bPtr := add(b, 0x20)
     }
 
-    memmove(bPtr, self.ptr(), self.len());
+    memcpy(bPtr, self.ptr(), self.len());
     return b;
 }
 
@@ -159,7 +159,7 @@ function keccak(Slice self) pure returns (bytes32 result) {
 /**
  * @dev Concatenates two `Slice`s into a newly allocated `bytes`.
  */
-function add(Slice self, Slice other) view returns (bytes memory b) {
+function add(Slice self, Slice other) pure returns (bytes memory b) {
     uint256 selfLen = self.len();
     uint256 otherLen = other.len();
 
@@ -169,8 +169,8 @@ function add(Slice self, Slice other) view returns (bytes memory b) {
         bPtr := add(b, 0x20)
     }
 
-    memmove(bPtr, self.ptr(), selfLen);
-    memmove(bPtr + selfLen, other.ptr(), otherLen);
+    memcpy(bPtr, self.ptr(), selfLen);
+    memcpy(bPtr + selfLen, other.ptr(), otherLen);
     return b;
 }
 
@@ -181,7 +181,7 @@ function add(Slice self, Slice other) view returns (bytes memory b) {
  * TODO this is the wrong place for this method, but there are no other places atm
  * (since there's no proper chaining/reducers/anything)
  */
-function join(Slice self, Slice[] memory slices) view returns (bytes memory b) {
+function join(Slice self, Slice[] memory slices) pure returns (bytes memory b) {
     uint256 slicesLen = slices.length;
     if (slicesLen == 0) return "";
 
@@ -205,11 +205,11 @@ function join(Slice self, Slice[] memory slices) view returns (bytes memory b) {
     for (uint256 i; i < slicesLen; i++) {
         Slice slice = slices[i];
         // copy slice
-        memmove(bPtr, slice.ptr(), slice.len());
+        memcpy(bPtr, slice.ptr(), slice.len());
         bPtr += slice.len();
         // copy separator (skips the last cycle)
         if (i < repetitionLen) {
-            memmove(bPtr, self.ptr(), self.len());
+            memcpy(bPtr, self.ptr(), self.len());
             bPtr += self.len();
         }
     }
@@ -219,10 +219,10 @@ function join(Slice self, Slice[] memory slices) view returns (bytes memory b) {
  * @dev Copies all elements from `src` into `self`.
  * The length of `src` must be the same as `self`.
  */
-function copyFromSlice(Slice self, Slice src) view {
+function copyFromSlice(Slice self, Slice src) pure {
     if (self.len() != src.len()) revert Slice__LengthMismatch();
 
-    memmove(self.ptr(), src.ptr(), src.len());
+    memcpy(self.ptr(), src.ptr(), src.len());
 }
 
 /**

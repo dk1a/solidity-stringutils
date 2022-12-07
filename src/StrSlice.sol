@@ -132,7 +132,7 @@ function isEmpty(StrSlice self) pure returns (bool) {
  * @dev Copies `StrSlice` to a newly allocated string.
  * The `StrSlice` will NOT point to the new string.
  */
-function toString(StrSlice self) view returns (string memory) {
+function toString(StrSlice self) pure returns (string memory) {
     return string(self.asSlice().toBytes());
 }
 
@@ -148,7 +148,7 @@ function keccak(StrSlice self) pure returns (bytes32 result) {
 /**
  * @dev Concatenates two `StrSlice`s into a newly allocated string.
  */
-function add(StrSlice self, StrSlice other) view returns (string memory) {
+function add(StrSlice self, StrSlice other) pure returns (string memory) {
     return string(self.asSlice().add(other.asSlice()));
 }
 
@@ -156,7 +156,7 @@ function add(StrSlice self, StrSlice other) view returns (string memory) {
  * @dev Flattens an array of `StrSlice`s into a single newly allocated string,
  * placing `self` as the separator between each.
  */
-function join(StrSlice self, StrSlice[] memory strs) view returns (string memory) {
+function join(StrSlice self, StrSlice[] memory strs) pure returns (string memory) {
     Slice[] memory slices;
     // TODO is there another way to unwrap arrays of user-defined types?
     assembly {
@@ -327,7 +327,7 @@ function replacen(
     StrSlice pattern,
     StrSlice to,
     uint256 n
-) view returns (string memory str) {
+) pure returns (string memory str) {
     // TODO dynamic string; atm length can be reduced but not increased
     assert(pattern.len() >= to.len());
     assert(pattern.len() > 0);
