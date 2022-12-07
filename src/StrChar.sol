@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.17;
 
-import { isValidUtf8 as _isValidUtf8, utf8CharWidth } from "./utf8.sol";
-import { leftMask } from "./mem.sol";
+import { isValidUtf8 as _isValidUtf8, utf8CharWidth } from "./utils/utf8.sol";
+import { leftMask } from "./utils/mem.sol";
 
 /**
  * @title A single UTF-8 encoded character.

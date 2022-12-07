@@ -5,7 +5,7 @@ pragma solidity ^0.8.17;
 import { Slice, Slice__ } from "./Slice.sol";
 import { StrChar, StrChar__ } from "./StrChar.sol";
 import { StrCharsIter, StrCharsIter__ } from "./StrCharsIter.sol";
-import { isValidUtf8 } from "./utf8.sol";
+import { isValidUtf8 } from "./utils/utf8.sol";
 
 /**
  * @title A string slice.

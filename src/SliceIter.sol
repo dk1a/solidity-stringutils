@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import { mload8 } from "./mem.sol";
+import { mload8 } from "./utils/mem.sol";
 import { Slice, Slice__ } from "./Slice.sol";
 
 /**

@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.17;
 
-import { mload8, memmove, memcmp, memeq, leftMask } from "./mem.sol";
-import { memchr, memrchr } from "./memchr.sol";
-import { PackPtrLen } from "./PackPtrLen.sol";
+import { mload8, memmove, memcmp, memeq, leftMask } from "./utils/mem.sol";
+import { memchr, memrchr } from "./utils/memchr.sol";
+import { PackPtrLen } from "./utils/PackPtrLen.sol";
 
 import { SliceIter, SliceIter__ } from "./SliceIter.sol";
 
