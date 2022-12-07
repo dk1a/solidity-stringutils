@@ -77,7 +77,7 @@ using {
     cmp, eq, ne, lt, lte, gt, gte,
     // index
     get, first, last,
-    splitAt, getSubslice, getBefore, getAfter,
+    splitAt, getSubslice, getBefore, getAfter, getAfterStrict,
     // search
     find, rfind, contains,
     startsWith, endsWith,
@@ -144,6 +144,8 @@ function toBytes32(Slice self) pure returns (bytes32 b) {
 
 /**
  * @dev Returns keccak256 of all the bytes of `Slice`.
+ * Note that for any `bytes memory b`, keccak256(b) == b.toSlice().keccak()
+ * (keccak256 does not include the length byte)
  */
 function keccak(Slice self) pure returns (bytes32 result) {
     uint256 selfPtr = self.ptr();
@@ -349,12 +351,25 @@ function getBefore(Slice self, uint256 index) pure returns (Slice) {
 
 /**
  * @dev Returns a subslice [index:] of `self`.
- * Reverts if `index` >= length.
+ * Reverts if `index` > length.
  */
 function getAfter(Slice self, uint256 index) pure returns (Slice) {
     uint256 selfLen = self.len();
-    if (index >= selfLen) revert Slice__OutOfBounds();
+    if (index > selfLen) revert Slice__OutOfBounds();
     // safe because index <= selfLen (ptr+len is implicitly safe)
+    unchecked {
+        return Slice__.fromRawParts(self.ptr() + index, selfLen - index);
+    }
+}
+
+/**
+ * @dev Returns a non-zero subslice [index:] of `self`.
+ * Reverts if `index` >= length.
+ */
+function getAfterStrict(Slice self, uint256 index) pure returns (Slice) {
+    uint256 selfLen = self.len();
+    if (index >= selfLen) revert Slice__OutOfBounds();
+    // safe because index < selfLen (ptr+len is implicitly safe)
     unchecked {
         return Slice__.fromRawParts(self.ptr() + index, selfLen - index);
     }

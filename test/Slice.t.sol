@@ -19,11 +19,50 @@ contract SliceTest is PRBTest, Assertions {
     }
 
     // skipping cmp tests, that's covered by SliceAssertionsTest
-    // TODO explicitly test stuff like copyFromSlice,startsWith etc
-    // (tho it's likely fine due to other tests)
 
     function testLen(bytes calldata _b) public {
         assertEq(_b.toSlice().len(), _b.length);
+    }
+
+    function testIsEmpty() public {
+        assertTrue(bytes("").toSlice().isEmpty());
+        assertFalse(new bytes(1).toSlice().isEmpty());
+    }
+
+    function testToBytes(bytes calldata _b) public {
+        assertEq(_b, _b.toSlice().toBytes());
+    }
+
+    function testToBytes32(bytes memory _b) public {
+        bytes32 b32;
+        if (_b.length > 0) {
+            /// @solidity memory-safe-assembly
+            assembly {
+                b32 := mload(add(_b, 0x20))
+            }
+        }
+        assertEq(b32, _b.toSlice().toBytes32());
+    }
+
+    function testKeccak__Eq(bytes calldata _b) public {
+        bytes memory b1 = _b;
+        bytes memory b2 = _b;
+        
+        assertEq(b1.toSlice().keccak(), b2.toSlice().keccak());
+        assertEq(keccak256(b1), keccak256(b2));
+        assertEq(b1.toSlice().keccak(), keccak256(b1));
+    }
+
+    function testKeccak__NotEq(bytes calldata _b) public {
+        vm.assume(_b.length > 0);
+        bytes memory b1 = _b;
+        bytes memory b2 = _b;
+
+        uint256 i = uint256(keccak256(abi.encode(_b, "i"))) % _b.length;
+        b1[i] ^= 0x01;
+        assertEq(b1.toSlice().keccak(), keccak256(b1));
+        assertNotEq(b1.toSlice().keccak(), b2.toSlice().keccak());
+        assertNotEq(keccak256(b1), keccak256(b2));
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -34,10 +73,7 @@ contract SliceTest is PRBTest, Assertions {
         bytes memory b1 = _b[:_b.length / 2];
         bytes memory b2 = _b[_b.length / 2:];
 
-        assertEq(
-            keccak256(b1.toSlice().add(b2.toSlice())),
-            keccak256(_b)
-        );
+        assertEq(b1.toSlice().add(b2.toSlice()), _b);
     }
 
     function testJoin__EmptySeparator(bytes calldata _b) public {
@@ -49,10 +85,7 @@ contract SliceTest is PRBTest, Assertions {
         slices[0] = b1.toSlice();
         slices[1] = b2.toSlice();
 
-        assertEq(
-            keccak256(sep.toSlice().join(slices)),
-            keccak256(_b)
-        );
+        assertEq(sep.toSlice().join(slices), _b);
     }
 
     function testJoin__RandomSeparator(bytes calldata _b) public {
@@ -66,10 +99,7 @@ contract SliceTest is PRBTest, Assertions {
         slices[1] = b2.toSlice();
         slices[2] = b3.toSlice();
 
-        assertEq(
-            keccak256(sep.toSlice().join(slices)),
-            keccak256(abi.encodePacked(b1, sep, b2, sep, b3))
-        );
+        assertEq(sep.toSlice().join(slices), abi.encodePacked(b1, sep, b2, sep, b3));
     }
 
     function testJoin__ArrayLen1(bytes calldata _b) public {
@@ -79,10 +109,7 @@ contract SliceTest is PRBTest, Assertions {
         Slice[] memory slices = new Slice[](1);
         slices[0] = b1.toSlice();
 
-        assertEq(
-            keccak256(sep.toSlice().join(slices)),
-            keccak256(abi.encodePacked(b1))
-        );
+        assertEq(sep.toSlice().join(slices), abi.encodePacked(b1));
     }
 
     function testJoin__ArrayLen0() public {
@@ -90,10 +117,7 @@ contract SliceTest is PRBTest, Assertions {
 
         Slice[] memory slices;
 
-        assertEq(
-            keccak256(sep.toSlice().join(slices)),
-            keccak256('')
-        );
+        assertEq(sep.toSlice().join(slices), '');
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -124,30 +148,24 @@ contract SliceTest is PRBTest, Assertions {
         Slice slice = _b.toSlice();
         (Slice s1, Slice s2) = slice.splitAt(_b.length / 2);
         assertEq(
-            keccak256(abi.encodePacked(
-                s1.copyToBytes(), s2.copyToBytes()
-            )),
-            keccak256(_b)
+            abi.encodePacked(
+                s1.toBytes(), s2.toBytes()
+            ),
+            _b
         );
     }
 
     function testSplitAt__0(bytes calldata _b) public {
         Slice slice = _b.toSlice();
         (Slice s1, Slice s2) = slice.splitAt(0);
-        assertEq(
-            keccak256(s2.copyToBytes()),
-            keccak256(_b)
-        );
+        assertEq(s2.toBytes(), _b);
         assertEq(s1.len(), 0);
     }
 
     function testSplitAt__Length(bytes calldata _b) public {
         Slice slice = _b.toSlice();
         (Slice s1, Slice s2) = slice.splitAt(_b.length);
-        assertEq(
-            keccak256(s1.copyToBytes()),
-            keccak256(_b)
-        );
+        assertEq(s1.toBytes(), _b);
         assertEq(s2.len(), 0);
     }
 
@@ -157,10 +175,7 @@ contract SliceTest is PRBTest, Assertions {
         uint256 end = _b.length == 0 ? 0 : uint256(keccak256(abi.encode(_b, "end"))) % _b.length;
         vm.assume(start <= end);
         Slice subslice = _b.toSlice().getSubslice(start, end);
-        assertEq(
-            keccak256(subslice.copyToBytes()),
-            keccak256(_b[start:end])
-        );
+        assertEq(subslice.toBytes(), _b[start:end]);
     }
 
     function testGetSubslice__RevertStartAfterEnd(bytes calldata _b) public {
@@ -170,6 +185,40 @@ contract SliceTest is PRBTest, Assertions {
         vm.assume(start > end);
         vm.expectRevert(Slice__OutOfBounds.selector);
         _b.toSlice().getSubslice(start, end);
+    }
+
+    function testGetBefore(bytes calldata _b) public {
+        Slice s1 = _b.toSlice().getBefore(_b.length / 2);
+        assertEq(s1, _b[:_b.length / 2]);
+    }
+
+    function testGetBefore_RevertOutOfBounds() public {
+        bytes memory _b;
+        vm.expectRevert(Slice__OutOfBounds.selector);
+        _b.toSlice().getBefore(1);
+    }
+
+    function testGetAfter(bytes calldata _b) public {
+        Slice s1 = _b.toSlice().getAfter(_b.length / 2);
+        assertEq(s1, _b[_b.length / 2:]);
+    }
+
+    function testGetAfter_RevertOutOfBounds() public {
+        bytes memory _b;
+        vm.expectRevert(Slice__OutOfBounds.selector);
+        _b.toSlice().getAfter(1);
+    }
+
+    function testGetAfterStrict(bytes calldata _b) public {
+        vm.assume(_b.length > 0);
+        Slice s1 = _b.toSlice().getAfterStrict(_b.length / 2);
+        assertEq(s1, _b[_b.length / 2:]);
+    }
+
+    function testGetAfterStrict_RevertOutOfBounds() public {
+        bytes memory _b;
+        vm.expectRevert(Slice__OutOfBounds.selector);
+        _b.toSlice().getAfterStrict(0);
     }
 
     /*//////////////////////////////////////////////////////////////////////////

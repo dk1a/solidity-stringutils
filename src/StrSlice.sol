@@ -225,7 +225,7 @@ function isCharBoundary(StrSlice self, uint256 index) pure returns (bool) {
  * Reverts if index is out of bounds.
  */
 function get(StrSlice self, uint256 index) pure returns (StrChar char) {
-    bytes32 b = self.asSlice().getAfter(index).toBytes32();
+    bytes32 b = self.asSlice().getAfterStrict(index).toBytes32();
     if (!isValidUtf8(b)) revert StrSlice__InvalidCharBoundary();
     return StrChar__.fromValidUtf8(b);
 }
