@@ -297,4 +297,96 @@ contract SliceTest is PRBTest, Assertions {
         uint256 offset = b1.toSlice().rfind(b2.toSlice());
         assertEq(offset, type(uint256).max);
     }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                        SEARCH
+    //////////////////////////////////////////////////////////////////////////*/
+
+    function testContains(bytes calldata _b) public {
+        vm.assume(_b.length > 0);
+        bytes memory pat = _b[_b.length / 2:_b.length / 2 + 1];
+        assertTrue(_b.toSlice().contains(pat.toSlice()));
+    }
+
+    function testContains__NotFound() public {
+        bytes memory _b = "123456789";
+        bytes memory pat = "0";
+        assertFalse(_b.toSlice().contains(pat.toSlice()));
+    }
+
+    function testContains__EmptySelf() public {
+        bytes memory _b = "";
+        bytes memory pat = "0";
+        assertFalse(_b.toSlice().contains(pat.toSlice()));
+    }
+
+    function testContains__EmptyPat() public {
+        bytes memory _b = "123456789";
+        bytes memory pat = "";
+        assertTrue(_b.toSlice().contains(pat.toSlice()));
+    }
+
+    function testContains__EmptyBoth() public {
+        bytes memory _b = "";
+        bytes memory pat = "";
+        assertTrue(_b.toSlice().contains(pat.toSlice()));
+    }
+
+    function testStartsWith(bytes calldata _b) public {
+        uint256 i = _b.length == 0 ? 0 : uint256(keccak256(abi.encode(_b, "i"))) % _b.length;
+        bytes memory pat = _b[:i];
+        assertTrue(_b.toSlice().startsWith(pat.toSlice()));
+    }
+
+    function testStartsWith__False() public {
+        bytes memory _b = "123456789";
+        assertFalse(_b.toSlice().startsWith(bytes("2").toSlice()));
+        assertFalse(_b.toSlice().startsWith(bytes("9").toSlice()));
+    }
+
+    function testEndsWith(bytes calldata _b) public {
+        uint256 i = _b.length == 0 ? 0 : uint256(keccak256(abi.encode(_b, "i"))) % _b.length;
+        bytes memory pat = _b[i:];
+        assertTrue(_b.toSlice().endsWith(pat.toSlice()));
+    }
+
+    function testEndsWith__False() public {
+        bytes memory _b = "123456789";
+        assertFalse(_b.toSlice().endsWith(bytes("1").toSlice()));
+        assertFalse(_b.toSlice().endsWith(bytes("8").toSlice()));
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                        MODIFY
+    //////////////////////////////////////////////////////////////////////////*/
+
+    function testStripPrefix() public {
+        bytes memory _b = "12345";
+        assertEq(_b.toSlice().stripPrefix(bytes("123").toSlice()),    bytes("45"));
+        assertEq(_b.toSlice().stripPrefix(_b.toSlice()),              bytes(""));
+        assertEq(_b.toSlice().stripPrefix(bytes("").toSlice()),       _b);
+        assertEq(_b.toSlice().stripPrefix(bytes("5").toSlice()),      _b);
+        assertEq(_b.toSlice().stripPrefix(bytes("123456").toSlice()), _b);
+    }
+
+    function testStripPrefix__FromEmpty() public {
+        bytes memory _b;
+        assertEq(_b.toSlice().stripPrefix(bytes("1").toSlice()), _b);
+        assertEq(_b.toSlice().stripPrefix(bytes("").toSlice()),  _b);
+    }
+
+    function testStripSuffix() public {
+        bytes memory _b = "12345";
+        assertEq(_b.toSlice().stripSuffix(bytes("345").toSlice()),    bytes("12"));
+        assertEq(_b.toSlice().stripSuffix(_b.toSlice()),              bytes(""));
+        assertEq(_b.toSlice().stripSuffix(bytes("").toSlice()),       _b);
+        assertEq(_b.toSlice().stripSuffix(bytes("1").toSlice()),      _b);
+        assertEq(_b.toSlice().stripSuffix(bytes("123456").toSlice()), _b);
+    }
+
+    function testStripSuffix__FromEmpty() public {
+        bytes memory _b;
+        assertEq(_b.toSlice().stripSuffix(bytes("1").toSlice()), _b);
+        assertEq(_b.toSlice().stripSuffix(bytes("").toSlice()),  _b);
+    }
 }
