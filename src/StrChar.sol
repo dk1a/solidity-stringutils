@@ -105,9 +105,9 @@ function toBytes32(StrChar self) pure returns (bytes32) {
 function toString(StrChar self) pure returns (string memory str) {
     uint256 _len = self.len();
     str = new string(_len);
-    // TODO bitmask is probably better
-    for (uint256 i; i < _len; i++) {
-        bytes(str)[i] = StrChar.unwrap(self)[i];
+    /// @solidity memory-safe-assembly
+    assembly {
+        mstore(add(str, 0x20), self)
     }
     return str;
 }

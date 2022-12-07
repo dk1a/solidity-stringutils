@@ -9,7 +9,6 @@ import { Slice, Slice__ } from "./Slice.sol";
  * @title Slice iterator.
  * @dev This struct is created by the iter method on `Slice`.
  * Iterates only 1 byte (uint8) at a time.
- * TODO other item types
  */
 struct SliceIter {
     uint256 _ptr;

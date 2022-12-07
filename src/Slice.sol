@@ -10,7 +10,6 @@ import { SliceIter, SliceIter__ } from "./SliceIter.sol";
 
 /**
  * @title A view into a contiguous sequence of 1-byte items.
- * TODO other item types
  */
 type Slice is uint256;
 
@@ -320,9 +319,6 @@ function splitAt(Slice self, uint256 mid) pure returns (Slice, Slice) {
     uint256 selfPtr = self.ptr();
     uint256 selfLen = self.len();
     if (mid > selfLen) revert Slice__OutOfBounds();
-
-    // TODO the 2nd slice being able to get an invalid pointer bothers me,
-    // but that only happens if its len is 0 so it's fine?
     return (Slice__.fromRawParts(selfPtr, mid), Slice__.fromRawParts(selfPtr + mid, selfLen - mid));
 }
 

@@ -11,7 +11,6 @@ using { toSlice } for bytes;
 
 contract SliceAssertionsTest is PRBTest, Assertions {
     /// @dev simple byte-by-byte comparison to test more complicated comparisons
-    // TODO while this is hard to get wrong, maybe still test it?
     function naiveCmp(bytes memory b1, bytes memory b2) internal pure returns (int256) {
         uint256 shortest = b1.length < b2.length ? b1.length : b2.length;
         for (uint256 i; i < shortest; i++) {
@@ -35,6 +34,17 @@ contract SliceAssertionsTest is PRBTest, Assertions {
         b1 = b[:b.length / 2];
         // b2 can be 1 byte longer sometimes
         b2 = b[b.length / 2:];
+    }
+
+    function testNaiveCmp() public {
+        assertEq(naiveCmp("1", "0"),   1);
+        assertEq(naiveCmp("1", "1"),   0);
+        assertEq(naiveCmp("0", "1"),  -1);
+        assertEq(naiveCmp("1", ""),    1);
+        assertEq(naiveCmp("", ""),     0);
+        assertEq(naiveCmp("", "1"),   -1);
+        assertEq(naiveCmp("12", "1"),  1);
+        assertEq(naiveCmp("1", "12"), -1);
     }
 
     /*//////////////////////////////////////////////////////////////////////////

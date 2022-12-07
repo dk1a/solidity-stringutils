@@ -30,6 +30,7 @@ function mload8(uint256 ptr) pure returns (uint8 item) {
 function memcpy(uint256 ptrDest, uint256 ptrSrc, uint256 length) pure {
     // Copy word-length chunks while possible
     for(; length >= 32; length -= 32) {
+        /// @solidity memory-safe-assembly
         assembly {
             mstore(ptrDest, mload(ptrSrc))
         }
@@ -40,6 +41,7 @@ function memcpy(uint256 ptrDest, uint256 ptrSrc, uint256 length) pure {
 
     // Copy remaining bytes
     bytes32 data;
+    /// @solidity memory-safe-assembly
     assembly {
         data := mload(ptrSrc)
     }
@@ -51,6 +53,7 @@ function memcpy(uint256 ptrDest, uint256 ptrSrc, uint256 length) pure {
  */
 function mstoreN(uint256 ptrDest, bytes32 data, uint256 n) pure {
     uint256 mask = leftMask(n);
+    /// @solidity memory-safe-assembly
     assembly {
         mstore(ptrDest,
             or(

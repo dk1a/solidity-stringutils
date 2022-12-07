@@ -158,7 +158,6 @@ function add(StrSlice self, StrSlice other) pure returns (string memory) {
  */
 function join(StrSlice self, StrSlice[] memory strs) pure returns (string memory) {
     Slice[] memory slices;
-    // TODO is there another way to unwrap arrays of user-defined types?
     assembly {
         slices := strs
     }

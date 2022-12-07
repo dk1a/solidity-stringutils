@@ -94,9 +94,11 @@ function next(StrCharsIter memory self) pure returns (StrChar char) {
     char = StrChar__.from(b);
 
     // advance the iterator
-    // TODO this can probably be unchecked (toBytes32 zeros overflow, and selfLen != 0 so \0 can be a char too)
-    self._ptr += char.len();
-    self._len -= char.len();
+    // safe because selfLen != 0, toBytes32 zeros overflow, StrChar__.from reverts for invalid chars
+    unchecked {
+        self._ptr += char.len();
+        self._len -= char.len();
+    }
 
     return char;
 }
