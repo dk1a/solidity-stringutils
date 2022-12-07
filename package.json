@@ -3,7 +3,15 @@
   "version": "0.0.0",
   "author": "dk1a <dk1a@protonmail.com>",
   "license": "MIT",
-  "description": "",
+  "description": "StrSlice & Slice library for Solidity",
+  "keywords": [
+    "solidity",
+    "library",
+    "string",
+    "slice",
+    "ethereum",
+    "smart-contracts"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/dk1a/solidity-stringutils.git"
@@ -21,6 +29,8 @@
     "/src"
   ],
   "devDependencies": {
+    "@commitlint/cli": "^17.3.0",
+    "@commitlint/config-conventional": "^17.3.0",
     "@prb/test": "^0.2.1",
     "husky": "^8.0.2"
   }

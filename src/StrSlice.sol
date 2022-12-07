@@ -94,7 +94,7 @@ using {
     // modify
     stripPrefix, stripSuffix,
     splitOnce, rsplitOnce,
-    replacen,
+    /*replacen,*/
     // iteration
     chars
 } for StrSlice global;
@@ -363,12 +363,13 @@ function rsplitOnce(StrSlice self, StrSlice pattern)
 }
 
 /**
+ * TODO UNFINISHED
  * @dev Replaces first `n` matches of a pattern with another string slice.
  * Returns the result in a newly allocated string.
  * Note this does not modify the string `self` is a slice of.
  * WARNING: Requires 0 < pattern.len() <= to.len()
  */
-function replacen(
+/*function replacen(
     StrSlice self,
     StrSlice pattern,
     StrSlice to,
@@ -429,7 +430,7 @@ function replacen(
         }
     }
     return str;
-}
+}*/
 
 /**
  * @dev Returns an character iterator over the slice.
