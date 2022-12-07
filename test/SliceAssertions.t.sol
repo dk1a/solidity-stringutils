@@ -3,13 +3,13 @@
 pragma solidity ^0.8.17;
 
 import { PRBTest } from "@prb/test/src/PRBTest.sol";
-import { Assertions } from "../src/test/Assertions.sol";
+import { SliceAssertions } from "../src/test/SliceAssertions.sol";
 
 import { Slice, toSlice } from "../src/Slice.sol";
 
 using { toSlice } for bytes;
 
-contract SliceAssertionsTest is PRBTest, Assertions {
+contract SliceAssertionsTest is PRBTest, SliceAssertions {
     /// @dev simple byte-by-byte comparison to test more complicated comparisons
     function naiveCmp(bytes memory b1, bytes memory b2) internal pure returns (int256) {
         uint256 shortest = b1.length < b2.length ? b1.length : b2.length;
@@ -70,12 +70,14 @@ contract SliceAssertionsTest is PRBTest, Assertions {
         assertEq(b, b.toSlice().toBytes());
     }
 
-    function testFailEq(bytes memory b1, bytes memory b2) public {
+    function testFailEq(bytes calldata _b) public {
+        (bytes memory b1, bytes memory b2) = b1b2(_b);
         vm.assume(keccak256(b1) != keccak256(b2));
         assertEq(b1.toSlice(), b2.toSlice());
     }
 
-    function testNotEq(bytes memory b1, bytes memory b2) public {
+    function testNotEq(bytes calldata _b) public {
+        (bytes memory b1, bytes memory b2) = b1b2(_b);
         vm.assume(keccak256(b1) != keccak256(b2));
         // compare new assertions
         assertNotEq(b1.toSlice(), b2.toSlice());

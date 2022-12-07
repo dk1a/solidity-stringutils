@@ -6,6 +6,7 @@ import { PRBTest } from "@prb/test/src/PRBTest.sol";
 
 import { StrSlice, toSlice, StrCharsIter } from "../src/StrSlice.sol";
 import { SliceIter__StopIteration } from "../src/SliceIter.sol";
+import { StrChar__InvalidUTF8 } from "../src/StrChar.sol";
 
 using { toSlice } for string;
 
@@ -18,6 +19,11 @@ contract StrCharsIterTest is PRBTest {
         assertEq(toSlice(unicode"Z̤͔ͧ̑̓ä͖̭̈̇lͮ̒ͫǧ̗͚̚o̙̔ͮ̇͐̇Z̤͔ͧ̑̓ä͖̭̈̇lͮ̒ͫǧ̗͚̚o̙̔ͮ̇͐̇").chars().count(), 56);
         assertEq(toSlice(unicode"🗮🐵🌝👤👿🗉💀🉄🍨🉔🈥🔥🏅🔪🉣📷🉳🍠🈃🉌🖷👍🌐💎🋀🌙💼💮🗹🗘💬🖜🐥🖸🈰🍦💈📆🋬🏇🖒🐜👮🊊🗒🈆🗻🏁🈰🎎🊶🉠🍖🉪🌖📎🌄💵🕷🔧🍸🋗🍁🋸")
             .chars().count(), 64);
+    }
+
+    function testCount__InvalidUTF8() public {
+        vm.expectRevert(StrChar__InvalidUTF8.selector);
+        toSlice(string(bytes(hex"FFFF"))).chars().count();
     }
 
     function testNext() public {

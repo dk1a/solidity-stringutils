@@ -3,7 +3,6 @@
 pragma solidity ^0.8.17;
 
 import { PRBTest } from "@prb/test/src/PRBTest.sol";
-import { Assertions } from "../src/test/Assertions.sol";
 
 import { Slice, toSlice } from "../src/Slice.sol";
 import { SliceIter } from "../src/SliceIter.sol";
@@ -11,7 +10,7 @@ import { SliceIter__StopIteration } from "../src/SliceIter.sol";
 
 using { toSlice } for bytes;
 
-contract SliceIterTest is PRBTest, Assertions {
+contract SliceIterTest is PRBTest {
     function testLen(bytes calldata _b) public {
         SliceIter memory iter = _b.toSlice().iter();
         assertEq(iter.len(), _b.length);

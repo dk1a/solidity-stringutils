@@ -3,14 +3,14 @@
 pragma solidity ^0.8.17;
 
 import { PRBTest } from "@prb/test/src/PRBTest.sol";
-import { Assertions } from "../src/test/Assertions.sol";
+import { SliceAssertions } from "../src/test/SliceAssertions.sol";
 
 import { Slice, Slice__, toSlice } from "../src/Slice.sol";
 import { Slice__OutOfBounds } from "../src/Slice.sol";
 
 using { toSlice } for bytes;
 
-contract SliceTest is PRBTest, Assertions {
+contract SliceTest is PRBTest, SliceAssertions {
     function checkOffset(bytes memory b1, bytes memory b2, uint256 offset) internal {
         require(b2.length <= b1.length, "checkOffset expects b2.length <= b1.length");
         for (uint256 i; i < b2.length; i++) {
