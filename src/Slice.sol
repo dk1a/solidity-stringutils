@@ -532,8 +532,8 @@ function stripPrefix(Slice self, Slice pattern) pure returns (Slice result) {
 function stripSuffix(Slice self, Slice pattern) pure returns (Slice result) {
     if (pattern.len() == 0) return self;
 
-    if (self.startsWith(pattern)) {
-        (result, ) = self.splitAt(pattern.len());
+    if (self.endsWith(pattern)) {
+        (result, ) = self.splitAt(self.len() - pattern.len());
         return result;
     } else {
         return self;
