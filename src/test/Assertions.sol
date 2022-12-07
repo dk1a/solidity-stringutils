@@ -14,53 +14,53 @@ contract Assertions is PRBTest {
     // Eq
 
     function assertEq(Slice a, Slice b) internal {
-        assertEq(a.copyToBytes(), b.copyToBytes());
+        assertEq(a.toBytes(), b.toBytes());
     }
 
     function assertEq(Slice a, Slice b, string memory err) internal {
-        assertEq(a.copyToBytes(), b.copyToBytes(), err);
+        assertEq(a.toBytes(), b.toBytes(), err);
     }
 
     function assertEq(Slice a, bytes memory b) internal {
-        assertEq(a.copyToBytes(), b);
+        assertEq(a.toBytes(), b);
     }
 
     function assertEq(Slice a, bytes memory b, string memory err) internal {
-        assertEq(a.copyToBytes(), b, err);
+        assertEq(a.toBytes(), b, err);
     }
 
     function assertEq(bytes memory a, Slice b) internal {
-        assertEq(a, b.copyToBytes());
+        assertEq(a, b.toBytes());
     }
 
     function assertEq(bytes memory a, Slice b, string memory err) internal {
-        assertEq(a, b.copyToBytes(), err);
+        assertEq(a, b.toBytes(), err);
     }
 
     // NotEq
 
     function assertNotEq(Slice a, Slice b) internal {
-        assertNotEq(a.copyToBytes(), b.copyToBytes());
+        assertNotEq(a.toBytes(), b.toBytes());
     }
 
     function assertNotEq(Slice a, Slice b, string memory err) internal {
-        assertNotEq(a.copyToBytes(), b.copyToBytes(), err);
+        assertNotEq(a.toBytes(), b.toBytes(), err);
     }
 
     function assertNotEq(Slice a, bytes memory b) internal {
-        assertNotEq(a.copyToBytes(), b);
+        assertNotEq(a.toBytes(), b);
     }
 
     function assertNotEq(Slice a, bytes memory b, string memory err) internal {
-        assertNotEq(a.copyToBytes(), b, err);
+        assertNotEq(a.toBytes(), b, err);
     }
 
     function assertNotEq(bytes memory a, Slice b) internal {
-        assertNotEq(a, b.copyToBytes());
+        assertNotEq(a, b.toBytes());
     }
 
     function assertNotEq(bytes memory a, Slice b, string memory err) internal {
-        assertNotEq(a, b.copyToBytes(), err);
+        assertNotEq(a, b.toBytes(), err);
     }
 
     // Lt
@@ -68,8 +68,8 @@ contract Assertions is PRBTest {
     function assertLt(Slice a, Slice b) internal virtual {
         if (!a.lt(b)) {
             emit Log("Error: a < b not satisfied [bytes]");
-            emit LogNamedBytes("  Value a", a.copyToBytes());
-            emit LogNamedBytes("  Value b", a.copyToBytes());
+            emit LogNamedBytes("  Value a", a.toBytes());
+            emit LogNamedBytes("  Value b", a.toBytes());
             fail();
         }
     }
@@ -110,8 +110,8 @@ contract Assertions is PRBTest {
     function assertLte(Slice a, Slice b) internal virtual {
         if (!a.lte(b)) {
             emit Log("Error: a <= b not satisfied [bytes]");
-            emit LogNamedBytes("  Value a", a.copyToBytes());
-            emit LogNamedBytes("  Value b", a.copyToBytes());
+            emit LogNamedBytes("  Value a", a.toBytes());
+            emit LogNamedBytes("  Value b", a.toBytes());
             fail();
         }
     }
@@ -152,8 +152,8 @@ contract Assertions is PRBTest {
     function assertGt(Slice a, Slice b) internal virtual {
         if (!a.gt(b)) {
             emit Log("Error: a > b not satisfied [bytes]");
-            emit LogNamedBytes("  Value a", a.copyToBytes());
-            emit LogNamedBytes("  Value b", a.copyToBytes());
+            emit LogNamedBytes("  Value a", a.toBytes());
+            emit LogNamedBytes("  Value b", a.toBytes());
             fail();
         }
     }
@@ -194,8 +194,8 @@ contract Assertions is PRBTest {
     function assertGte(Slice a, Slice b) internal virtual {
         if (!a.gte(b)) {
             emit Log("Error: a >= b not satisfied [bytes]");
-            emit LogNamedBytes("  Value a", a.copyToBytes());
-            emit LogNamedBytes("  Value b", a.copyToBytes());
+            emit LogNamedBytes("  Value a", a.toBytes());
+            emit LogNamedBytes("  Value b", a.toBytes());
             fail();
         }
     }
@@ -236,8 +236,8 @@ contract Assertions is PRBTest {
     function assertContains(Slice a, Slice b) internal virtual {
         if (!a.contains(b)) {
             emit Log("Error: a does not contain b [bytes]");
-            emit LogNamedBytes("  Bytes a", a.copyToBytes());
-            emit LogNamedBytes("  Bytes b", b.copyToBytes());
+            emit LogNamedBytes("  Bytes a", a.toBytes());
+            emit LogNamedBytes("  Bytes b", b.toBytes());
             fail();
         }
     }

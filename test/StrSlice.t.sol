@@ -9,10 +9,10 @@ import { StrSlice, toSlice, StrSlice__InvalidCharBoundary } from "../src/StrSlic
 using { toSlice } for string;
 
 contract StrSliceTest is PRBTest {
-	function testToString() public {
-		string memory _s = unicode"Hello, world!";
-		assertEq(_s, _s.toSlice().toString());
-	}
+    function testToString() public {
+        string memory _s = unicode"Hello, world!";
+        assertEq(_s, _s.toSlice().toString());
+    }
 
     function testLen() public {
         string memory _s = unicode"こんにちは";

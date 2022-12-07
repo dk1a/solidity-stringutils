@@ -54,7 +54,7 @@ library StrSlice__ {
      * Note this does not validate the whole slice.
      */
     function isBoundaryStart(Slice slice) internal pure returns (bool) {
-        bytes32 b = slice.copyToBytes32();
+        bytes32 b = slice.toBytes32();
         return StrChar__.fromUnchecked(b).isValidUtf8();
     }
 }
@@ -77,11 +77,11 @@ function toSlice(string memory str) pure returns (StrSlice slice) {
 using {
     asSlice,
     ptr, len, isEmpty,
-    // concatenation
-    add, join,
-    // copy
+    // conversion
     toString,
     keccak,
+    // concatenation
+    add, join,
     // compare
     cmp, eq, ne, lt, lte, gt, gte,
     // index
@@ -129,6 +129,23 @@ function isEmpty(StrSlice self) pure returns (bool) {
 }
 
 /**
+ * @dev Copies `StrSlice` to a newly allocated string.
+ * The `StrSlice` will NOT point to the new string.
+ */
+function toString(StrSlice self) view returns (string memory) {
+    return string(self.asSlice().toBytes());
+}
+
+/**
+ * @dev Returns keccak256 of all the bytes of `StrSlice`.
+ * Note `StrSlice` hashes will never equal `string` hashes,
+ * because `string` always stores length in-memory, but `StrSlice` never includes it.
+ */
+function keccak(StrSlice self) pure returns (bytes32 result) {
+    return self.asSlice().keccak();
+}
+
+/**
  * @dev Concatenates two `StrSlice`s into a newly allocated string.
  */
 function add(StrSlice self, StrSlice other) view returns (string memory) {
@@ -146,23 +163,6 @@ function join(StrSlice self, StrSlice[] memory strs) view returns (string memory
         slices := strs
     }
     return string(self.asSlice().join(slices));
-}
-
-/**
- * @dev Copies `StrSlice` to a newly allocated string.
- * The `StrSlice` will NOT point to the new string.
- */
-function toString(StrSlice self) view returns (string memory) {
-    return string(self.asSlice().copyToBytes());
-}
-
-/**
- * @dev Returns keccak256 of all the bytes of `StrSlice`.
- * Note `StrSlice` hashes will never equal `string` hashes,
- * because `string` always stores length in-memory, but `StrSlice` never includes it.
- */
-function keccak(StrSlice self) pure returns (bytes32 result) {
-    return self.asSlice().keccak();
 }
 
 /**
@@ -212,7 +212,7 @@ function gte(StrSlice self, StrSlice other) pure returns (bool) {
  */
 function isCharBoundary(StrSlice self, uint256 index) pure returns (bool) {
     if (index < self.len()) {
-        return isValidUtf8(self.asSlice().getAfter(index).copyToBytes32());
+        return isValidUtf8(self.asSlice().getAfter(index).toBytes32());
     } else if (index == self.len()) {
         return true;
     } else {
@@ -225,7 +225,7 @@ function isCharBoundary(StrSlice self, uint256 index) pure returns (bool) {
  * Reverts if index is out of bounds.
  */
 function get(StrSlice self, uint256 index) pure returns (StrChar char) {
-    bytes32 b = self.asSlice().getAfter(index).copyToBytes32();
+    bytes32 b = self.asSlice().getAfter(index).toBytes32();
     if (!isValidUtf8(b)) revert StrSlice__InvalidCharBoundary();
     return StrChar__.fromValidUtf8(b);
 }

@@ -55,9 +55,9 @@ contract SliceAssertionsTest is PRBTest, Assertions {
         assertGte(b.toSlice(), b);
         assertGte(b, b.toSlice());
         // to the existing ones
-        assertEq(b.toSlice().copyToBytes(), b.toSlice().copyToBytes());
-        assertEq(b.toSlice().copyToBytes(), b);
-        assertEq(b, b.toSlice().copyToBytes());
+        assertEq(b.toSlice().toBytes(), b.toSlice().toBytes());
+        assertEq(b.toSlice().toBytes(), b);
+        assertEq(b, b.toSlice().toBytes());
     }
 
     function testFailEq(bytes memory b1, bytes memory b2) public {
@@ -72,9 +72,9 @@ contract SliceAssertionsTest is PRBTest, Assertions {
         assertNotEq(b1.toSlice(), b2);
         assertNotEq(b1, b2.toSlice());
         // to the existing ones
-        assertNotEq(b1.toSlice().copyToBytes(), b2.toSlice().copyToBytes());
-        assertNotEq(b1.toSlice().copyToBytes(), b2);
-        assertNotEq(b1, b2.toSlice().copyToBytes());
+        assertNotEq(b1.toSlice().toBytes(), b2.toSlice().toBytes());
+        assertNotEq(b1.toSlice().toBytes(), b2);
+        assertNotEq(b1, b2.toSlice().toBytes());
     }
 
     function testFailNotEq(bytes memory b) public {

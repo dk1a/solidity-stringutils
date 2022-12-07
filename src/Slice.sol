@@ -66,11 +66,13 @@ function toSlice(bytes memory b) pure returns (Slice slice) {
 
 using {
     ptr, len, isEmpty,
+    // conversion
+    toBytes, toBytes32,
+    keccak,
     // concatenation
     add, join,
     // copy
-    copyFromSlice, copyToBytes, copyToBytes32,
-    keccak,
+    copyFromSlice,
     // compare
     cmp, eq, ne, lt, lte, gt, gte,
     // index
@@ -104,6 +106,52 @@ function len(Slice self) pure returns (uint256) {
  */
 function isEmpty(Slice self) pure returns (bool) {
     return self.len() == 0;
+}
+
+/**
+ * @dev Copies `Slice` to a new `bytes`.
+ * The `Slice` will NOT point to the new `bytes`.
+ */
+function toBytes(Slice self) view returns (bytes memory b) {
+    b = new bytes(self.len());
+    uint256 bPtr;
+    assembly {
+        bPtr := add(b, 0x20)
+    }
+
+    memmove(bPtr, self.ptr(), self.len());
+    return b;
+}
+
+/**
+ * @dev Fills a `bytes32` (value type) with the first 32 bytes of `Slice`.
+ * Goes from left(MSB) to right(LSB).
+ * If len < 32, the leftover bytes are zeros.
+ */
+function toBytes32(Slice self) pure returns (bytes32 b) {
+    uint256 selfPtr = self.ptr();
+
+    // mask removes any trailing bytes
+    uint256 selfLen = self.len();
+    uint256 mask = leftMask(selfLen > 32 ? 32 : selfLen);
+
+    /// @solidity memory-safe-assembly
+    assembly {
+        b := and(mload(selfPtr), mask)
+    }
+    return b;
+}
+
+/**
+ * @dev Returns keccak256 of all the bytes of `Slice`.
+ */
+function keccak(Slice self) pure returns (bytes32 result) {
+    uint256 selfPtr = self.ptr();
+    uint256 selfLen = self.len();
+    /// @solidity memory-safe-assembly
+    assembly {
+        result := keccak256(selfPtr, selfLen)
+    }
 }
 
 /**
@@ -173,52 +221,6 @@ function copyFromSlice(Slice self, Slice src) view {
     if (self.len() != src.len()) revert Slice__LengthMismatch();
 
     memmove(self.ptr(), src.ptr(), src.len());
-}
-
-/**
- * @dev Copies `Slice` to a new `bytes`.
- * The `Slice` will NOT point to the new `bytes`.
- */
-function copyToBytes(Slice self) view returns (bytes memory b) {
-    b = new bytes(self.len());
-    uint256 bPtr;
-    assembly {
-        bPtr := add(b, 0x20)
-    }
-
-    memmove(bPtr, self.ptr(), self.len());
-    return b;
-}
-
-/**
- * @dev Fills a `bytes32` (value type) with the first 32 bytes of `Slice`.
- * Goes from left(aka MSB) to right(aka LSB).
- * If len < 32, the leftover bytes are zeros.
- */
-function copyToBytes32(Slice self) pure returns (bytes32 b) {
-    uint256 selfPtr = self.ptr();
-
-    // mask removes any trailing bytes
-    uint256 selfLen = self.len();
-    uint256 mask = leftMask(selfLen > 32 ? 32 : selfLen);
-
-    /// @solidity memory-safe-assembly
-    assembly {
-        b := and(mload(selfPtr), mask)
-    }
-    return b;
-}
-
-/**
- * @dev Returns keccak256 of all the bytes of `Slice`.
- */
-function keccak(Slice self) pure returns (bytes32 result) {
-    uint256 selfPtr = self.ptr();
-    uint256 selfLen = self.len();
-    /// @solidity memory-safe-assembly
-    assembly {
-        result := keccak256(selfPtr, selfLen)
-    }
 }
 
 /**

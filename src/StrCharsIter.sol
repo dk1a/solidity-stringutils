@@ -89,12 +89,12 @@ function isEmpty(StrCharsIter memory self) pure returns (bool) {
 function next(StrCharsIter memory self) pure returns (StrChar char) {
     if (self.len() == 0) revert SliceIter__StopIteration();
 
-    bytes32 b = self._sliceIter().asSlice().copyToBytes32();
+    bytes32 b = self._sliceIter().asSlice().toBytes32();
     // Reverts if can't make valid UTF-8
     char = StrChar__.from(b);
 
     // advance the iterator
-    // TODO this can probably be unchecked (copyToBytes32 zeros overflow, and selfLen != 0 so \0 can be a char too)
+    // TODO this can probably be unchecked (toBytes32 zeros overflow, and selfLen != 0 so \0 can be a char too)
     self._ptr += char.len();
     self._len -= char.len();
 
