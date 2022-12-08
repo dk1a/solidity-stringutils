@@ -92,27 +92,40 @@ function memmove(uint256 ptrDest, uint256 ptrSrc, uint256 n) view {
  * https://doc.rust-lang.org/std/cmp/trait.Ord.html#lexicographical-comparison
  */
 function memcmp(uint256 ptrSelf, uint256 ptrOther, uint256 n) pure returns (int256) {
-    while (n >= 32) {
-        uint256 chunkSelf;
-        uint256 chunkOther;
-        /// @solidity memory-safe-assembly
-        assembly {
-            chunkSelf := mload(ptrSelf)
-            chunkOther := mload(ptrOther)
+    if (n > 32) {
+        uint256 ptrSelfEnd;
+        // safe because lenTail <= n (ptr+len is implicitly safe)
+        unchecked {
+            uint256 lenTail = n % 32;
+            ptrSelfEnd = ptrSelf + (n - lenTail);
+            n = lenTail;
         }
 
-        if (chunkSelf < chunkOther) {
-            return -1;
-        } else if (chunkSelf > chunkOther) {
-            return 1;
-        }
+        // pointers have the same length, so checking just one
+        while (ptrSelf < ptrSelfEnd) {
+            uint256 chunkSelf;
+            uint256 chunkOther;
+            /// @solidity memory-safe-assembly
+            assembly {
+                chunkSelf := mload(ptrSelf)
+                chunkOther := mload(ptrOther)
+            }
 
-        n -= 32;
-        ptrSelf += 32;
-        ptrOther += 32;
+            if (chunkSelf == chunkOther) {
+                // safe because ptr < ptrEnd, and ptrEnd = ptr + n*32 (see lenTail)
+                unchecked {
+                    ptrSelf += 32;
+                    ptrOther += 32;
+                }
+                // an explicit continue is better for optimization here
+                continue;
+            } else if (chunkSelf < chunkOther) {
+                return -1;
+            } else if (chunkSelf > chunkOther) {
+                return 1;
+            }
+        }
     }
-
-    if (n == 0) return 0;
 
     uint256 mask = leftMask(n);
     int256 diff;
@@ -133,11 +146,10 @@ function memcmp(uint256 ptrSelf, uint256 ptrOther, uint256 n) pure returns (int2
  *
  * It's much faster than memcmp, you may want to use them together.
  * bytes ~diff
- * 1     3x
- * 32    4.5x
- * 33    5.5x
- * 100   10x
- * 3000  26x
+ * 1-32  2.5x
+ * 33    4x
+ * 100   4.5x
+ * 3000  8x
  * TODO binary search in memcmp with memeq for big sequences
  */
 function memeq(uint256 ptrSelf, uint256 ptrOther, uint256 n) pure returns (bool result) {
@@ -159,6 +171,7 @@ function memeq(uint256 ptrSelf, uint256 ptrOther, uint256 n) pure returns (bool 
  * length 32: 0xffffff...ffffff
  */
 function leftMask(uint256 length) pure returns (uint256) {
+    // TODO eventually remove the assert for better gas efficiency
     assert(length <= 32);
 
     unchecked {
