@@ -1,6 +1,6 @@
 {
   "name": "@dk1a/solidity-stringutils",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "dk1a <dk1a@protonmail.com>",
   "license": "MIT",
   "description": "StrSlice & Slice library for Solidity",
