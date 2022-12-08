@@ -144,7 +144,7 @@ function toBytes32(Slice self) pure returns (bytes32 b) {
 
     // mask removes any trailing bytes
     uint256 selfLen = self.len();
-    uint256 mask = leftMask(selfLen > 32 ? 32 : selfLen);
+    uint256 mask = leftMask(selfLen);
 
     /// @solidity memory-safe-assembly
     assembly {

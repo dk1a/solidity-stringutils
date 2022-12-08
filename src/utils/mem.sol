@@ -28,24 +28,33 @@ function mload8(uint256 ptr) pure returns (uint8 item) {
  * WARNING: Does not handle pointer overlap!
  */
 function memcpy(uint256 ptrDest, uint256 ptrSrc, uint256 length) pure {
-    // Copy word-length chunks while possible
-    for(; length >= 32; length -= 32) {
+    // copy 32-byte chunks
+    while (length >= 32) {
         /// @solidity memory-safe-assembly
         assembly {
             mstore(ptrDest, mload(ptrSrc))
         }
-        ptrDest += 32;
-        ptrSrc += 32;
+        // safe because total addition will be <= length (ptr+len is implicitly safe)
+        unchecked {
+            ptrDest += 32;
+            ptrSrc += 32;
+            length -= 32;
+        }
     }
-    if (length == 0) return;
-
-    // Copy remaining bytes
-    bytes32 data;
+    // copy the 0-31 length tail
+    // (the rest is an inlined `mstoreN`)
+    uint256 mask = leftMask(length);
     /// @solidity memory-safe-assembly
     assembly {
-        data := mload(ptrSrc)
+        mstore(ptrDest,
+            or(
+                // store the left part
+                and(mload(ptrSrc), mask),
+                // preserve the right part
+                and(mload(ptrDest), not(mask))
+            )
+        )
     }
-    mstoreN(ptrDest, data, length);
 }
 
 /**
@@ -160,21 +169,21 @@ function memeq(uint256 ptrSelf, uint256 ptrOther, uint256 n) pure returns (bool 
 }
 
 /**
- * @dev Left-aligned byte mask for partial mload/mstore
+ * @dev Left-aligned byte mask for partial mload/mstore.
+ * For length >= 32 returns type(uint256).max
  *
- * length 0:  0x000000...000000
- * length 1:  0xff0000...000000
- * length 2:  0xffff00...000000
+ * length 0:   0x000000...000000
+ * length 1:   0xff0000...000000
+ * length 2:   0xffff00...000000
  * ...
- * length 30: 0xffffff...ff0000
- * length 31: 0xffffff...ffff00
- * length 32: 0xffffff...ffffff
+ * length 30:  0xffffff...ff0000
+ * length 31:  0xffffff...ffff00
+ * length 32+: 0xffffff...ffffff
  */
 function leftMask(uint256 length) pure returns (uint256) {
-    // TODO eventually remove the assert for better gas efficiency
-    assert(length <= 32);
-
     unchecked {
-        return ~((1 << (8 * (32 - length))) - 1);
+        return ~(
+            type(uint256).max >> (length * 8)
+        );
     }
 }
