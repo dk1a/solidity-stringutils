@@ -46,6 +46,18 @@ library Slice__ {
     function fromRawParts(uint256 _ptr, uint256 _len) internal pure returns (Slice slice) {
         return Slice.wrap(PackPtrLen.pack(_ptr, _len));
     }
+
+    /**
+     * @dev Like `fromRawParts`, but does NO validity checks.
+     * _ptr and _len MUST fit into uint128.
+     * The caller MUST guarantee memory-safety.
+     * Primarily for internal use.
+     */
+    function fromUnchecked(uint256 _ptr, uint256 _len) internal pure returns (Slice slice) {
+        return Slice.wrap(
+            (_ptr << 128) | (_len & PackPtrLen.MASK_LEN)
+        );
+    }
 }
 
 /**
@@ -90,21 +102,21 @@ using {
  * @dev Returns the pointer to the start of an in-memory slice.
  */
 function ptr(Slice self) pure returns (uint256) {
-    return PackPtrLen.getPtr(Slice.unwrap(self));
+    return Slice.unwrap(self) >> 128;
 }
 
 /**
  * @dev Returns the length in bytes.
  */
 function len(Slice self) pure returns (uint256) {
-    return PackPtrLen.getLen(Slice.unwrap(self));
+    return Slice.unwrap(self) & PackPtrLen.MASK_LEN;
 }
 
 /**
  * @dev Returns true if the slice has a length of 0.
  */
 function isEmpty(Slice self) pure returns (bool) {
-    return self.len() == 0;
+    return Slice.unwrap(self) & PackPtrLen.MASK_LEN == 0;
 }
 
 /**
@@ -184,13 +196,14 @@ function join(Slice self, Slice[] memory slices) pure returns (bytes memory b) {
     uint256 slicesLen = slices.length;
     if (slicesLen == 0) return "";
 
+    uint256 selfLen = self.len();
     uint256 repetitionLen;
     // -1 is safe because of ==0 check earlier
     unchecked {
         repetitionLen = slicesLen - 1;
     }
     // add separator repetitions length
-    uint256 totalLen = self.len() * repetitionLen;
+    uint256 totalLen = selfLen * repetitionLen;
     // add slices length
     for (uint256 i; i < slicesLen; i++) {
         totalLen += slices[i].len();
@@ -208,8 +221,8 @@ function join(Slice self, Slice[] memory slices) pure returns (bytes memory b) {
         bPtr += slice.len();
         // copy separator (skips the last cycle)
         if (i < repetitionLen) {
-            memcpy(bPtr, self.ptr(), self.len());
-            bPtr += self.len();
+            memcpy(bPtr, self.ptr(), selfLen);
+            bPtr += selfLen;
         }
     }
 }
@@ -219,9 +232,10 @@ function join(Slice self, Slice[] memory slices) pure returns (bytes memory b) {
  * The length of `src` must be the same as `self`.
  */
 function copyFromSlice(Slice self, Slice src) pure {
-    if (self.len() != src.len()) revert Slice__LengthMismatch();
+    uint256 selfLen = self.len();
+    if (selfLen != src.len()) revert Slice__LengthMismatch();
 
-    memcpy(self.ptr(), src.ptr(), src.len());
+    memcpy(self.ptr(), src.ptr(), selfLen);
 }
 
 /**
@@ -301,7 +315,8 @@ function get(Slice self, uint256 index) pure returns (uint8 item) {
  * Reverts if the slice is empty.
  */
 function first(Slice self) pure returns (uint8 item) {
-    return self.get(0);
+    if (self.len() == 0) revert Slice__OutOfBounds();
+    return mload8(self.ptr());
 }
 
 /**
@@ -309,9 +324,11 @@ function first(Slice self) pure returns (uint8 item) {
  * Reverts if the slice is empty.
  */
 function last(Slice self) pure returns (uint8 item) {
-    // on 0-1 overflow get will revert with out of bounds, as intended
+    uint256 selfLen = self.len();
+    if (selfLen == 0) revert Slice__OutOfBounds();
+    // safe because selfLen > 0 (ptr+len is implicitly safe)
     unchecked {
-        return self.get(self.len() - 1);
+        return mload8(self.ptr() + (selfLen - 1));
     }
 }
 
@@ -322,7 +339,7 @@ function splitAt(Slice self, uint256 mid) pure returns (Slice, Slice) {
     uint256 selfPtr = self.ptr();
     uint256 selfLen = self.len();
     if (mid > selfLen) revert Slice__OutOfBounds();
-    return (Slice__.fromRawParts(selfPtr, mid), Slice__.fromRawParts(selfPtr + mid, selfLen - mid));
+    return (Slice__.fromUnchecked(selfPtr, mid), Slice__.fromUnchecked(selfPtr + mid, selfLen - mid));
 }
 
 /**
@@ -334,7 +351,7 @@ function getSubslice(Slice self, uint256 start, uint256 end) pure returns (Slice
     // selfPtr + start is safe because start <= selfLen (pointers are implicitly safe)
     // end - start is safe because start <= end
     unchecked {
-        return Slice__.fromRawParts(self.ptr() + start, end - start);
+        return Slice__.fromUnchecked(self.ptr() + start, end - start);
     }
 }
 
@@ -345,7 +362,7 @@ function getSubslice(Slice self, uint256 start, uint256 end) pure returns (Slice
 function getBefore(Slice self, uint256 index) pure returns (Slice) {
     uint256 selfLen = self.len();
     if (index > selfLen) revert Slice__OutOfBounds();
-    return Slice__.fromRawParts(self.ptr(), index);
+    return Slice__.fromUnchecked(self.ptr(), index);
 }
 
 /**
@@ -357,7 +374,7 @@ function getAfter(Slice self, uint256 index) pure returns (Slice) {
     if (index > selfLen) revert Slice__OutOfBounds();
     // safe because index <= selfLen (ptr+len is implicitly safe)
     unchecked {
-        return Slice__.fromRawParts(self.ptr() + index, selfLen - index);
+        return Slice__.fromUnchecked(self.ptr() + index, selfLen - index);
     }
 }
 
@@ -370,7 +387,7 @@ function getAfterStrict(Slice self, uint256 index) pure returns (Slice) {
     if (index >= selfLen) revert Slice__OutOfBounds();
     // safe because index < selfLen (ptr+len is implicitly safe)
     unchecked {
-        return Slice__.fromRawParts(self.ptr() + index, selfLen - index);
+        return Slice__.fromUnchecked(self.ptr() + index, selfLen - index);
     }
 }
 
@@ -495,7 +512,7 @@ function startsWith(Slice self, Slice pattern) pure returns (bool) {
     Slice prefix = self;
     // make prefix's length equal patLen
     if (selfLen > patLen) {
-        prefix = self.getSubslice(0, patLen);
+        prefix = self.getBefore(patLen);
     }
     return prefix.eq(pattern);
 }
@@ -511,7 +528,7 @@ function endsWith(Slice self, Slice pattern) pure returns (bool) {
     Slice suffix = self;
     // make suffix's length equal patLen
     if (selfLen > patLen) {
-        suffix = self.getSubslice(selfLen - patLen, selfLen);
+        suffix = self.getAfter(selfLen - patLen);
     }
     return suffix.eq(pattern);
 }
@@ -520,12 +537,15 @@ function endsWith(Slice self, Slice pattern) pure returns (bool) {
  * @dev Returns a subslice with the prefix removed.
  * If it does not start with `prefix`, returns `self` unmodified.
  */
-function stripPrefix(Slice self, Slice pattern) pure returns (Slice result) {
-    if (pattern.len() == 0) return self;
+function stripPrefix(Slice self, Slice pattern) pure returns (Slice) {
+    uint256 selfLen = self.len();
+    uint256 patLen = pattern.len();
+    if (patLen > selfLen) return self;
 
-    if (self.startsWith(pattern)) {
-        (, result) = self.splitAt(pattern.len());
-        return result;
+    (Slice prefix, Slice suffix) = self.splitAt(patLen);
+
+    if (prefix.eq(pattern)) {
+        return suffix;
     } else {
         return self;
     }
@@ -535,12 +555,20 @@ function stripPrefix(Slice self, Slice pattern) pure returns (Slice result) {
  * @dev Returns a subslice with the suffix removed.
  * If it does not end with `suffix`, returns `self` unmodified.
  */
-function stripSuffix(Slice self, Slice pattern) pure returns (Slice result) {
-    if (pattern.len() == 0) return self;
+function stripSuffix(Slice self, Slice pattern) pure returns (Slice) {
+    uint256 selfLen = self.len();
+    uint256 patLen = pattern.len();
+    if (patLen > selfLen) return self;
 
-    if (self.endsWith(pattern)) {
-        (result, ) = self.splitAt(self.len() - pattern.len());
-        return result;
+    uint256 index;
+    // safe because selfLen >= patLen
+    unchecked {
+        index = selfLen - patLen;
+    }
+    (Slice prefix, Slice suffix) = self.splitAt(index);
+
+    if (suffix.eq(pattern)) {
+        return prefix;
     } else {
         return self;
     }

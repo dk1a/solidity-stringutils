@@ -135,7 +135,6 @@ It's returned by some methods of `StrSlice` and `StrCharsIter`.
 | `lt`,`lte`       | <, <=                                            |
 | `gt`,`gte`       | >, >=                                            |
 | `isValidUtf8`    | usually true                                     |
-| `ptr`            | *dangerous* get memory pointer                   |
 
 `len` can return `0` *only* for invalid UTF-8 characters. It returns `1` for 0x00 (which is a valid 1-byte UTF-8 character).
 

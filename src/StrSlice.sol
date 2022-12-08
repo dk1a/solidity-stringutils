@@ -6,6 +6,7 @@ import { Slice, Slice__ } from "./Slice.sol";
 import { StrChar, StrChar__ } from "./StrChar.sol";
 import { StrCharsIter, StrCharsIter__ } from "./StrCharsIter.sol";
 import { isValidUtf8 } from "./utils/utf8.sol";
+import { PackPtrLen } from "./utils/PackPtrLen.sol";
 
 /**
  * @title A string slice.
@@ -112,21 +113,21 @@ function asSlice(StrSlice self) pure returns (Slice) {
  * This method is primarily for internal use.
  */
 function ptr(StrSlice self) pure returns (uint256) {
-    return self.asSlice().ptr();
+    return StrSlice.unwrap(self) >> 128;
 }
 
 /**
  * @dev Returns the length in bytes, not codepoints.
  */
 function len(StrSlice self) pure returns (uint256) {
-    return self.asSlice().len();
+    return StrSlice.unwrap(self) & PackPtrLen.MASK_LEN;
 }
 
 /**
  * @dev Returns true if the slice has a length of 0.
  */
 function isEmpty(StrSlice self) pure returns (bool) {
-    return self.asSlice().isEmpty();
+    return StrSlice.unwrap(self) & PackPtrLen.MASK_LEN == 0;
 }
 
 /**
