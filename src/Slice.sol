@@ -229,35 +229,38 @@ function copyFromSlice(Slice self, Slice src) pure {
  * @return result 0 for equal, < 0 for less than and > 0 for greater than.
  */
 function cmp(Slice self, Slice other) pure returns (int256 result) {
+    uint256 selfPtr = self.ptr();
     uint256 selfLen = self.len();
+    uint256 otherPtr = other.ptr();
     uint256 otherLen = other.len();
     uint256 minLen = selfLen < otherLen ? selfLen : otherLen;
 
-    result = memcmp(self.ptr(), other.ptr(), minLen);
-
-    if (result == 0) {
+    // check equality first
+    if (memeq(selfPtr, otherPtr, minLen)) {
         // the longer slice is greater than its prefix
         // (lengths take only 16 bytes, so signed sub is safe)
         unchecked {
             return int256(selfLen) - int256(otherLen);
         }
     }
-
-    return result;
+    // if not equal, return the diff sign
+    return memcmp(selfPtr, otherPtr, minLen);
 }
 
 /// @dev self == other
-/// Note more efficient than cmp for big slices
+/// Note a bit more efficient than cmp
 function eq(Slice self, Slice other) pure returns (bool) {
-    if (self.len() != other.len()) return false;
-    return memeq(self.ptr(), other.ptr(), self.len());
+    uint256 selfLen = self.len();
+    if (selfLen != other.len()) return false;
+    return memeq(self.ptr(), other.ptr(), selfLen);
 }
 
 /// @dev self != other
-/// Note more efficient than cmp for big slices
+/// Note a bit more efficient than cmp
 function ne(Slice self, Slice other) pure returns (bool) {
-    if (self.len() != other.len()) return true;
-    return !memeq(self.ptr(), other.ptr(), self.len());
+    uint256 selfLen = self.len();
+    if (selfLen != other.len()) return true;
+    return !memeq(self.ptr(), other.ptr(), selfLen);
 }
 
 /// @dev `self` < `other`
@@ -376,16 +379,20 @@ function getAfterStrict(Slice self, uint256 index) pure returns (Slice) {
  * Returns type(uint256).max if the `pattern` does not match.
  */
 function find(Slice self, Slice pattern) pure returns (uint256) {
+    uint256 selfLen = self.len();
     uint256 patLen = pattern.len();
     if (patLen == 0) {
         return 0;
-    } else if (self.len() == 0 || patLen > self.len()) {
+    } else if (selfLen == 0 || patLen > selfLen) {
         return type(uint256).max;
     }
 
     uint256 offsetPtr = self.ptr();
-    uint256 offsetLen = self.len();
-    uint8 patFirst = pattern.first();
+    uint256 offsetLen = selfLen;
+    uint256 patPtr = pattern.ptr();
+    // low-level alternative to `first()` (safe because patLen != 0)
+    uint8 patFirst = mload8(patPtr);
+
     while (true) {
         uint256 index = memchr(offsetPtr, offsetLen, patFirst);
         // not found
@@ -399,7 +406,7 @@ function find(Slice self, Slice pattern) pure returns (uint256) {
             return type(uint256).max;
         }
 
-        if (memeq(offsetPtr, pattern.ptr(), patLen)) {
+        if (memeq(offsetPtr, patPtr, patLen)) {
             // found, return offset index
             return (offsetPtr - self.ptr());
         } else if (offsetLen == 1) {
@@ -420,17 +427,20 @@ function find(Slice self, Slice pattern) pure returns (uint256) {
  * Returns type(uint256).max if the `pattern` does not match.
  */
 function rfind(Slice self, Slice pattern) pure returns (uint256) {
+    uint256 selfLen = self.len();
     uint256 patLen = pattern.len();
     if (patLen == 0) {
         return 0;
-    } else if (self.len() == 0 || patLen > self.len()) {
+    } else if (selfLen == 0 || patLen > selfLen) {
         return type(uint256).max;
     }
 
-    uint256 offsetLen = self.len();
+    uint256 selfPtr = self.ptr();
+    uint256 offsetLen = selfLen;
+    uint256 patPtr = pattern.ptr();
     uint8 patLast = pattern.last();
     while (true) {
-        uint256 endIndex = memrchr(self.ptr(), offsetLen, patLast);
+        uint256 endIndex = memrchr(selfPtr, offsetLen, patLast);
         // not found
         if (endIndex == type(uint256).max) return type(uint256).max;
 
@@ -450,9 +460,9 @@ function rfind(Slice self, Slice pattern) pure returns (uint256) {
         }
 
         // get a ptr to the start of the pattern within self
-        uint256 patPtr = self.ptr() + startIndex;
+        uint256 offsetPtr = selfPtr + startIndex;
 
-        if (memeq(patPtr, pattern.ptr(), patLen)) {
+        if (memeq(offsetPtr, patPtr, patLen)) {
             // found, return index
             return startIndex;
         } else if (offsetLen == 1) {
