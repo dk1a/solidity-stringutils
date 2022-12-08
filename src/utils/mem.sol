@@ -130,32 +130,21 @@ function memcmp(uint256 ptrSelf, uint256 ptrOther, uint256 n) pure returns (int2
 
 /**
  * @dev Returns true if `n` memory bytes are equal.
- * This is faster than memcmp for large `n`.
- * TODO how large? what's the gas difference?
+ *
+ * It's much faster than memcmp, you may want to use them together.
+ * bytes ~diff
+ * 1     3x
+ * 32    4.5x
+ * 33    5.5x
+ * 100   10x
+ * 3000  26x
+ * TODO binary search in memcmp with memeq for big sequences
  */
-function memeq(uint256 ptrSelf, uint256 ptrOther, uint256 n) pure returns (bool) {
-    if (n <= 32) {
-        if (n == 0) return true;
-
-        uint256 mask = leftMask(n);
-        uint256 chunkSelf;
-        uint256 chunkOther;
-        /// @solidity memory-safe-assembly
-        assembly {
-            chunkSelf := and(mload(ptrSelf), mask)
-            chunkOther := and(mload(ptrOther), mask)
-        }
-        return chunkSelf == chunkOther;
-    }
-
-    uint256 hashSelf;
-    uint256 hashOther;
+function memeq(uint256 ptrSelf, uint256 ptrOther, uint256 n) pure returns (bool result) {
     /// @solidity memory-safe-assembly
     assembly {
-        hashSelf := keccak256(ptrSelf, n)
-        hashOther := keccak256(ptrOther, n)
+        result := eq(keccak256(ptrSelf, n), keccak256(ptrOther, n))
     }
-    return hashSelf == hashOther;
 }
 
 /**
