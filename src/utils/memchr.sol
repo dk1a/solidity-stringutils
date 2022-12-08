@@ -23,31 +23,57 @@ function memchr(uint256 ptrText, uint256 lenText, uint8 x) pure returns (uint256
         return memchrWord(ptrText, lenText, x);
     }
 
-    uint256 offset;
+    uint256 ptrStart = ptrText;
+    uint256 lenTail;
+    uint256 ptrEnd;
+    // safe because lenTail <= lenText (ptr+len is implicitly safe)
+    unchecked {
+        // (seems like unchecked % saves a little gas.. what does it check?)
+        lenTail = lenText % 32;
+        ptrEnd = ptrText + (lenText - lenTail);
+    }
     uint256 repeatedX = repeatByte(x);
-    while (lenText >= 32) {
-        uint256 chunk;
+    while (ptrText < ptrEnd) {
+        // any bytes equal to `x` become zeros
+        // (this helps find `x` faster, values of non-zero bytes don't matter)
+        uint256 chunkXZero;
         /// @solidity memory-safe-assembly
         assembly {
-            chunk := mload(ptrText)
+            chunkXZero := xor(mload(ptrText), repeatedX)
         }
         // break if there is a matching byte
-        if (containsZeroByte(chunk ^ repeatedX)) {
-            break;
+        if (nonZeroIfXcontainsZeroByte(chunkXZero) != 0) {
+            ////////
+            // ptrEnd = ptrText;
+            // lenTail = 32;
+            // break;
+            //// ^v these are equivalent, but inlining is cheaper
+            index = memchrWord(ptrText, 32, x);
+            if (index == type(uint256).max) {
+                return type(uint256).max;
+            } else {
+                unchecked {
+                    return index + (ptrText - ptrStart);
+                }
+            }
+            ////////
         }
 
-        ptrText += 32;
-        lenText -= 32;
-        offset += 32;
+        // safe because ptrText < ptrEnd, and ptrEnd = ptrText + n*32 (see lenTail)
+        unchecked {
+            ptrText += 32;
+        }
     }
 
-    if (lenText == 0) return type(uint256).max;
+    if (lenTail == 0) return type(uint256).max;
 
-    index = memchrWord(ptrText, lenText, x);
+    index = memchrWord(ptrEnd, lenTail, x);
     if (index == type(uint256).max) {
         return type(uint256).max;
     } else {
-        return index + offset;
+        unchecked {
+            return index + (ptrEnd - ptrStart);
+        }
     }
 }
 
@@ -89,13 +115,15 @@ function memrchr(uint256 ptrText, uint256 lenText, uint8 x) pure returns (uint25
             offsetPtr -= 32;
         }
 
-        uint256 chunk;
+        // any bytes equal to `x` become zeros
+        // (this helps find `x` faster, values of non-zero bytes don't matter)
+        uint256 chunkXZero;
         /// @solidity memory-safe-assembly
         assembly {
-            chunk := mload(offsetPtr)
+            chunkXZero := xor(mload(offsetPtr), repeatedX)
         }
         // break if there is a matching byte
-        if (containsZeroByte(chunk ^ repeatedX)) {
+        if (nonZeroIfXcontainsZeroByte(chunkXZero) != 0) {
             uint256 index = memrchrWord(offsetPtr, 32, x);
             return index + (offsetPtr - ptrText);
         }
@@ -112,17 +140,46 @@ function memrchr(uint256 ptrText, uint256 lenText, uint8 x) pure returns (uint25
  * This is for use by memchr after its chunk search.
  */
 function memchrWord(uint256 ptrText, uint256 lenText, uint8 x) pure returns (uint256) {
-    if (lenText > 32) {
-        lenText = 32;
-    }
     uint256 chunk;
     /// @solidity memory-safe-assembly
     assembly {
         chunk := mload(ptrText)
     }
+
+    uint256 i;
+    if (lenText > 32) {
+        lenText = 32;
+    }
+
+    ////////binary search start
+    // Some manual binary searches, cost ~50gas, could save up to ~1500
+    // (comment them out and the function will work fine)
+    if (lenText >= 16 + 2) {
+        uint256 repeatedX = chunk ^ repeatByte(x);
+
+        if (nonZeroIfXcontainsZeroByte(repeatedX | type(uint128).max) == 0) {
+            i = 16;
+
+            if (lenText >= 24 + 2) {
+                if (nonZeroIfXcontainsZeroByte(repeatedX | type(uint64).max) == 0) {
+                    i = 24;
+                }
+            }
+        } else if (nonZeroIfXcontainsZeroByte(repeatedX | type(uint192).max) == 0) {
+            i = 8;
+        }
+    } else if (lenText >= 8 + 2) {
+        uint256 repeatedX = chunk ^ repeatByte(x);
+
+        if (nonZeroIfXcontainsZeroByte(repeatedX | type(uint192).max) == 0) {
+            i = 8;
+        }
+    }
+    ////////binary search end
+    
     // ++ is safe because lenText <= 32
     unchecked {
-        for (uint256 i; i < lenText; i++) {
+        for (i; i < lenText; i++) {
             uint8 b;
             assembly {
                 b := byte(i, chunk)
@@ -171,16 +228,17 @@ uint256 constant LO_U256 = 0x010101010101010101010101010101010101010101010101010
 uint256 constant HI_U256 = 0x8080808080808080808080808080808080808080808080808080808080808080;
 
 /**
- * @dev Returns `true` if `x` contains any zero byte.
+ * @dev Returns a non-zero value if `x` contains any zero byte.
+ * (returning a bool would be less efficient)
  *
  * From *Matters Computational*, J. Arndt:
  *
  * "The idea is to subtract one from each of the bytes and then look for
  * bytes where the borrow propagated all the way to the most significant bit."
  */
-function containsZeroByte(uint256 x) pure returns (bool) {
+function nonZeroIfXcontainsZeroByte(uint256 x) pure returns (uint256) {
     unchecked {
-        return (x - LO_U256) & (~x) & HI_U256 != 0;
+        return (x - LO_U256) & (~x) & HI_U256;
     }
     /*
      * An example of how it works:
@@ -195,6 +253,10 @@ function containsZeroByte(uint256 x) pure returns (bool) {
 
 /// @dev Repeat byte `b` 32 times
 function repeatByte(uint8 b) pure returns (uint256) {
+    // safe because uint8 can't cause overflow:
     // e.g. 0x5A * 0x010101..010101 = 0x5A5A5A..5A5A5A
-    return b * (type(uint256).max / type(uint8).max);
+    // and  0xFF * 0x010101..010101 = 0xFFFFFF..FFFFFF
+    unchecked {
+        return b * (type(uint256).max / type(uint8).max);
+    }
 }
