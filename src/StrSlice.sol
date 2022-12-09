@@ -140,8 +140,8 @@ function toString(StrSlice self) view returns (string memory) {
 
 /**
  * @dev Returns keccak256 of all the bytes of `StrSlice`.
- * Note `StrSlice` hashes will never equal `string` hashes,
- * because `string` always stores length in-memory, but `StrSlice` never includes it.
+ * Note that for any `string memory b`, keccak256(b) == b.toSlice().keccak()
+ * (keccak256 does not include the length byte)
  */
 function keccak(StrSlice self) pure returns (bytes32 result) {
     return self.asSlice().keccak();
@@ -475,7 +475,7 @@ function _splitFound(StrSlice self, uint256 index, uint256 patLen)
     prefix = StrSlice.wrap(Slice.unwrap(
         Slice__.fromUnchecked(selfPtr, index)
     ));
-    // [(index+patLen):] (inlined `getBefore`)
+    // [(index+patLen):] (inlined `getAfter`)
     // safe because indexAfterPat <= selfLen
     unchecked {
         suffix = StrSlice.wrap(Slice.unwrap(
