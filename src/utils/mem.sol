@@ -110,7 +110,7 @@ function memcmp(uint256 ptrSelf, uint256 ptrOther, uint256 n) pure returns (int2
                 ptrOther += nHalf;
                 // (can't do n /= 2 instead of nHalf, some bytes would be skipped)
                 n -= nHalf;
-                // an explicity continue is better for optimization here
+                // an explicit continue is better for optimization here
                 continue;
             } else {
                 n -= nHalf;

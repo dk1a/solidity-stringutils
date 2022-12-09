@@ -397,16 +397,16 @@ function getAfterStrict(Slice self, uint256 index) pure returns (Slice) {
  * Returns type(uint256).max if the `pattern` does not match.
  */
 function find(Slice self, Slice pattern) pure returns (uint256) {
-    uint256 selfLen = self.len();
+    // offsetLen == selfLen initially, then starts shrinking
+    uint256 offsetLen = self.len();
     uint256 patLen = pattern.len();
     if (patLen == 0) {
         return 0;
-    } else if (selfLen == 0 || patLen > selfLen) {
+    } else if (offsetLen == 0 || patLen > offsetLen) {
         return type(uint256).max;
     }
 
     uint256 offsetPtr = self.ptr();
-    uint256 offsetLen = selfLen;
     uint256 patPtr = pattern.ptr();
     // low-level alternative to `first()` (safe because patLen != 0)
     uint8 patFirst = mload8(patPtr);
@@ -417,8 +417,11 @@ function find(Slice self, Slice pattern) pure returns (uint256) {
         if (index == type(uint256).max) return type(uint256).max;
 
         // move pointer to the found byte
-        offsetPtr += index;
-        offsetLen -= index;
+        // safe because index < offsetLen (ptr+len is implicitly safe)
+        unchecked {
+            offsetPtr += index;
+            offsetLen -= index;
+        }
         // can't find, pattern won't fit after index
         if (patLen > offsetLen) {
             return type(uint256).max;
@@ -433,8 +436,11 @@ function find(Slice self, Slice pattern) pure returns (uint256) {
         } else {
             // not found and can keep going;
             // increment pointer, memchr shouldn't receive what it returned (otherwise infinite loop)
-            offsetPtr++;
-            offsetLen--;
+            unchecked {
+                // safe because offsetLen > 1 (see offsetLen -= index, and index < offsetLen)
+                offsetPtr++;
+                offsetLen--;
+            }
         }
     }
     return type(uint256).max;
@@ -445,51 +451,54 @@ function find(Slice self, Slice pattern) pure returns (uint256) {
  * Returns type(uint256).max if the `pattern` does not match.
  */
 function rfind(Slice self, Slice pattern) pure returns (uint256) {
-    uint256 selfLen = self.len();
+    // offsetLen == selfLen initially, then starts shrinking
+    uint256 offsetLen = self.len();
     uint256 patLen = pattern.len();
     if (patLen == 0) {
         return 0;
-    } else if (selfLen == 0 || patLen > selfLen) {
+    } else if (offsetLen == 0 || patLen > offsetLen) {
         return type(uint256).max;
     }
 
     uint256 selfPtr = self.ptr();
-    uint256 offsetLen = selfLen;
     uint256 patPtr = pattern.ptr();
     uint8 patLast = pattern.last();
+    // using indexes instead of lengths saves some gas on redundant increments/decrements
+    uint256 patLastIndex;
+    // safe because of patLen == 0 check earlier
+    unchecked {
+        patLastIndex = patLen - 1;
+    }
+
     while (true) {
         uint256 endIndex = memrchr(selfPtr, offsetLen, patLast);
         // not found
         if (endIndex == type(uint256).max) return type(uint256).max;
-
-        // move pointer to the found byte (+1 is safe because index < offsetLen)
-        unchecked {
-            offsetLen = endIndex + 1;
-        }
         // can't find, pattern won't fit after index
-        if (patLen > offsetLen) {
-            return type(uint256).max;
-        }
-        // need startIndex, but memrchr returns endIndex
-        uint256 startIndex;
-        // - is safe because of the check 5 lines back
+        if (patLastIndex > endIndex) return type(uint256).max;
+
+        // (endIndex - patLastIndex is safe because of the check just earlier)
+        // (selfPtr + startIndex is safe because startIndex <= endIndex < offsetLen <= selfLen)
+        // (ptr+len is implicitly safe)
         unchecked {
-            startIndex = offsetLen - patLen;
-        }
+            // need startIndex, but memrchr returns endIndex
+            uint256 startIndex = endIndex - patLastIndex;
 
-        // get a ptr to the start of the pattern within self
-        uint256 offsetPtr = selfPtr + startIndex;
-
-        if (memeq(offsetPtr, patPtr, patLen)) {
-            // found, return index
-            return startIndex;
-        } else if (offsetLen == 1) {
-            // not found and this was the last character
-            return type(uint256).max;
-        } else {
-            // not found and can keep going;
-            // increment pointer, memrchr shouldn't receive what it returned (otherwise infinite loop)
-            offsetLen--;
+            if (memeq(selfPtr + startIndex, patPtr, patLen)) {
+                // found, return index
+                return startIndex;
+            } else if (endIndex > 0) {
+                // not found and can keep going;
+                // "decrement pointer", memrchr shouldn't receive what it returned
+                // (index is basically a decremented length already, saves an op)
+                // (I could even use 1 variable for both, but that'd be too confusing)
+                offsetLen = endIndex;
+                // an explicit continue is better for optimization here
+                continue;
+            } else {
+                // not found and this was the last character
+                return type(uint256).max;
+            }
         }
     }
     return type(uint256).max;
