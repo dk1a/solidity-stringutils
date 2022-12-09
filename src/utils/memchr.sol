@@ -28,7 +28,7 @@ function memchr(uint256 ptrText, uint256 lenText, uint8 x) pure returns (uint256
     uint256 ptrEnd;
     // safe because lenTail <= lenText (ptr+len is implicitly safe)
     unchecked {
-        // (seems like unchecked % saves a little gas.. what does it check?)
+        // (unchecked % saves a little gas)
         lenTail = lenText % 32;
         ptrEnd = ptrText + (lenText - lenTail);
     }
@@ -43,20 +43,16 @@ function memchr(uint256 ptrText, uint256 lenText, uint8 x) pure returns (uint256
         }
         // break if there is a matching byte
         if (nonZeroIfXcontainsZeroByte(chunkXZero) != 0) {
-            ////////
-            // ptrEnd = ptrText;
-            // lenTail = 32;
-            // break;
-            //// ^v these are equivalent, but inlining is cheaper
-            index = memchrWord(ptrText, 32, x);
-            if (index == type(uint256).max) {
-                return type(uint256).max;
-            } else {
-                unchecked {
-                    return index + (ptrText - ptrStart);
-                }
+            // - is safe because ptrText >= ptrStart (ptrText = ptrStart + 32*n)
+            // + is safe because index + offsetLen < lenText
+            // (ptr+len is implicitly safe)
+            unchecked {
+                return
+                    // index
+                    memchrWord(ptrText, 32, x)
+                    // + offsetLen
+                    + (ptrText - ptrStart);
             }
-            ////////
         }
 
         // safe because ptrText < ptrEnd, and ptrEnd = ptrText + n*32 (see lenTail)
@@ -71,8 +67,13 @@ function memchr(uint256 ptrText, uint256 lenText, uint8 x) pure returns (uint256
     if (index == type(uint256).max) {
         return type(uint256).max;
     } else {
+        // - is safe because ptrEnd >= ptrStart (ptrEnd = ptrStart + lenText - lenTail)
+        // + is safe because index + offsetLen < lenText
+        // (ptr+len is implicitly safe)
         unchecked {
-            return index + (ptrEnd - ptrStart);
+            return index
+                // + offsetLen
+                + (ptrEnd - ptrStart);
         }
     }
 }
@@ -87,14 +88,15 @@ function memrchr(uint256 ptrText, uint256 lenText, uint8 x) pure returns (uint25
         return memrchrWord(ptrText, lenText, x);
     }
 
+    uint256 lenTail;
     uint256 offsetPtr;
     // safe because pointers are guaranteed to be valid by the caller
     unchecked {
+        // (unchecked % saves a little gas)
+        lenTail = lenText % 32;
         offsetPtr = ptrText + lenText;
     }
 
-    // Check the unaligned tail, if it exists.
-    uint256 lenTail = lenText % 32;
     if (lenTail != 0) {
         // remove tail length
         // - is safe because lenTail <= lenText <= offsetPtr
@@ -104,7 +106,13 @@ function memrchr(uint256 ptrText, uint256 lenText, uint8 x) pure returns (uint25
         // return if there is a matching byte
         uint256 index = memrchrWord(offsetPtr, lenTail, x);
         if (index != type(uint256).max) {
-            return index + (offsetPtr - ptrText);
+            // - is safe because offsetPtr > ptrText (offsetPtr = ptrText + lenText - lenTail)
+            // + is safe because index + offsetLen < lenText
+            unchecked {
+                return index
+                    // + offsetLen
+                    + (offsetPtr - ptrText);
+            }
         }
     }
 
@@ -124,8 +132,15 @@ function memrchr(uint256 ptrText, uint256 lenText, uint8 x) pure returns (uint25
         }
         // break if there is a matching byte
         if (nonZeroIfXcontainsZeroByte(chunkXZero) != 0) {
-            uint256 index = memrchrWord(offsetPtr, 32, x);
-            return index + (offsetPtr - ptrText);
+            // - is safe because offsetPtr > ptrText (see the while condition)
+            // + is safe because index + offsetLen < lenText
+            unchecked {
+                return
+                    // index
+                    memrchrWord(offsetPtr, 32, x)
+                    // + offsetLen
+                    + (offsetPtr - ptrText);
+            }
         }
     }
     // not found
@@ -207,6 +222,7 @@ function memrchrWord(uint256 ptrText, uint256 lenText, uint8 x) pure returns (ui
     assembly {
         chunk := mload(ptrText)
     }
+
     while (lenText > 0) {
         // -- is safe because lenText > 0
         unchecked {
