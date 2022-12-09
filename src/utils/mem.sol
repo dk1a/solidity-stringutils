@@ -135,13 +135,8 @@ function memcmp(uint256 ptrSelf, uint256 ptrOther, uint256 n) pure returns (int2
 /**
  * @dev Returns true if `n` memory bytes are equal.
  *
- * It's much faster than memcmp, you may want to use them together.
- * bytes ~diff
- * 1-32  2.5x
- * 33    4x
- * 100   4.5x
- * 3000  8x
- * TODO binary search in memcmp with memeq for big sequences
+ * It's faster (up to 4x) than memcmp, especially on medium byte lengths like 32-320.
+ * The benefit gets smaller for larger lengths, for 10000 it's only 30% faster.
  */
 function memeq(uint256 ptrSelf, uint256 ptrOther, uint256 n) pure returns (bool result) {
     /// @solidity memory-safe-assembly

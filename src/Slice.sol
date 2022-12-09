@@ -263,7 +263,7 @@ function cmp(Slice self, Slice other) pure returns (int256 result) {
 }
 
 /// @dev self == other
-/// Note a bit more efficient than cmp
+/// Note more efficient than cmp
 function eq(Slice self, Slice other) pure returns (bool) {
     uint256 selfLen = self.len();
     if (selfLen != other.len()) return false;
@@ -271,7 +271,7 @@ function eq(Slice self, Slice other) pure returns (bool) {
 }
 
 /// @dev self != other
-/// Note a bit more efficient than cmp
+/// Note more efficient than cmp
 function ne(Slice self, Slice other) pure returns (bool) {
     uint256 selfLen = self.len();
     if (selfLen != other.len()) return true;

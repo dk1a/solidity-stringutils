@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import { Slice, Slice__ } from "./Slice.sol";
+import { Slice, Slice__, Slice__OutOfBounds } from "./Slice.sol";
 import { StrChar, StrChar__ } from "./StrChar.sol";
 import { StrCharsIter, StrCharsIter__ } from "./StrCharsIter.sol";
 import { isValidUtf8 } from "./utils/utf8.sol";
@@ -175,13 +175,13 @@ function cmp(StrSlice self, StrSlice other) pure returns (int256 result) {
 }
 
 /// @dev `self` == `other`
-/// Note more efficient than cmp for big slices
+/// Note more efficient than cmp
 function eq(StrSlice self, StrSlice other) pure returns (bool) {
     return self.asSlice().eq(other.asSlice());
 }
 
 /// @dev `self` != `other`
-/// Note more efficient than cmp for big slices
+/// Note more efficient than cmp
 function ne(StrSlice self, StrSlice other) pure returns (bool) {
     return self.asSlice().ne(other.asSlice());
 }
@@ -326,17 +326,13 @@ function splitOnce(StrSlice self, StrSlice pattern)
     pure
     returns (bool found, StrSlice prefix, StrSlice suffix)
 {
-    uint256 index = self.find(pattern);
+    uint256 index = self.asSlice().find(pattern.asSlice());
     if (index == type(uint256).max) {
+        // not found
         return (false, self, StrSlice.wrap(0));
     } else {
-        prefix = StrSlice.wrap(Slice.unwrap(
-            self.asSlice().getBefore(index)
-        ));
-        suffix = StrSlice.wrap(Slice.unwrap(
-            self.asSlice().getAfter(index + pattern.len())
-        ));
-        return (true, prefix, suffix);
+        // found
+        return self._splitFound(index, pattern.len());
     }
 }
 
@@ -349,17 +345,13 @@ function rsplitOnce(StrSlice self, StrSlice pattern)
     pure
     returns (bool found, StrSlice prefix, StrSlice suffix)
 {
-    uint256 index = self.rfind(pattern);
+    uint256 index = self.asSlice().rfind(pattern.asSlice());
     if (index == type(uint256).max) {
+        // not found
         return (false, StrSlice.wrap(0), self);
     } else {
-        prefix = StrSlice.wrap(Slice.unwrap(
-            self.asSlice().getBefore(index)
-        ));
-        suffix = StrSlice.wrap(Slice.unwrap(
-            self.asSlice().getAfter(index + pattern.len())
-        ));
-        return (true, prefix, suffix);
+        // found
+        return self._splitFound(index, pattern.len());
     }
 }
 
@@ -439,4 +431,43 @@ function rsplitOnce(StrSlice self, StrSlice pattern)
  */
 function chars(StrSlice self) pure returns (StrCharsIter memory) {
     return StrCharsIter__.from(self);
+}
+
+/*//////////////////////////////////////////////////////////////////////////
+                              FILE FUNCTIONS
+//////////////////////////////////////////////////////////////////////////*/
+
+using { _splitFound } for StrSlice;
+
+/**
+ * @dev Splits a slice into [:index] and [index+patLen:].
+ * CALLER GUARANTEE: `index` < self.len()
+ * For internal use by split/rsplit.
+ *
+ * This is mostly just a faster alternative to `getBefore`+`getAfter`.
+ */
+function _splitFound(StrSlice self, uint256 index, uint256 patLen)
+    pure
+    returns (bool, StrSlice prefix, StrSlice suffix)
+{
+    uint256 selfPtr = self.ptr();
+    uint256 selfLen = self.len();
+    uint256 indexAfterPat;
+    // safe because caller guarantees index to be < selfLen
+    unchecked {
+        indexAfterPat = index + patLen;
+        if (indexAfterPat > selfLen) revert Slice__OutOfBounds();
+    }
+    // [:index] (inlined `getBefore`)
+    prefix = StrSlice.wrap(Slice.unwrap(
+        Slice__.fromUnchecked(selfPtr, index)
+    ));
+    // [(index+patLen):] (inlined `getBefore`)
+    // safe because indexAfterPat <= selfLen
+    unchecked {
+        suffix = StrSlice.wrap(Slice.unwrap(
+            Slice__.fromUnchecked(selfPtr + indexAfterPat, selfLen - indexAfterPat)
+        ));
+    }
+    return (true, prefix, suffix);
 }
