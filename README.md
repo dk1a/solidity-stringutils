@@ -1,6 +1,6 @@
 # StrSlice & Slice library for Solidity
 
-- Types: [StrSlice](src\StrSlice.sol) for strings, [Slice](src\Slice.sol) for bytes, [StrChar](src\StrChar.sol) for characters
+- Types: [StrSlice](src/StrSlice.sol) for strings, [Slice](src/Slice.sol) for bytes, [StrChar](src/StrChar.sol) for characters
 - [Gas efficient](https://github.com/dk1a/solidity-stringutils-gas)
 - Versioned releases, available for both foundry and hardhat
 - Simple imports, you only need e.g. `StrSlice` and `toSlice`
@@ -8,7 +8,7 @@
 - Clean, well-documented and thoroughly-tested source code
 - Optional [PRBTest](https://github.com/paulrberg/prb-test) extension with assertions like `assertContains` and `assertLt` for both slices and native `bytes`, `string`
 - `Slice` and `StrSlice` are value types, not structs
-- Low-level functions like [memchr](src\utils\memchr.sol), [memcmp, memmove etc](src\utils\mem.sol)
+- Low-level functions like [memchr](src/utils/memchr.sol), [memcmp, memmove etc](src/utils/mem.sol)
 
 ## Install
 
@@ -50,7 +50,7 @@ assertEq(
 */
 ```
 
-See [ExamplesTest](test\Examples.t.sol).
+See [ExamplesTest](test/Examples.t.sol).
 
 Internally `StrSlice` uses `Slice` and extends it with logic for multibyte UTF-8 where necessary.
 
