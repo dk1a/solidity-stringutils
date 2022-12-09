@@ -1,3 +1,14 @@
+# [0.2.0](https://github.com/dk1a/solidity-stringutils/compare/v0.1.1...v0.2.0) (2022-12-09)
+
+
+### Features
+
+* add replacen ([3cc586b](https://github.com/dk1a/solidity-stringutils/commit/3cc586be116be77279f2004323380ea6742709fe))
+* update readme ([b269b98](https://github.com/dk1a/solidity-stringutils/commit/b269b98a34eea64e3173721fc6d42af2107b9367))
+* use memmove instead of memcpy ([8b6a6a5](https://github.com/dk1a/solidity-stringutils/commit/8b6a6a5dd009cf4e16ce8a42a4470678e4018454))
+
+
+
 ## [0.1.1](https://github.com/dk1a/solidity-stringutils/compare/v0.1.0...v0.1.1) (2022-12-08)
 
 
