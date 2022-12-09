@@ -78,6 +78,8 @@ Internally `StrSlice` uses `Slice` and extends it with logic for multibyte UTF-8
 | `stripSuffix`    | returns subslice without the suffix              |
 | `splitOnce`      | split into 2 subslices on the **first** match    |
 | `rsplitOnce`     | split into 2 subslices on the **last** match     |
+| `replacen`       | *experimental* replace `n` matches               |
+|                  | *replacen requires 0 < pattern.len() <= to.len()*|
 **iterate**
 | `chars`          | character iterator over the slice                |
 **dangerous**

@@ -200,5 +200,22 @@ contract StrSliceTest is PRBTest, StrSliceAssertions {
         assertEq(suffix, unicode"こんにちはこんにちは");
     }
 
+    // TODO both replacen and its tests are rather unfinished
+    function testReplacen() public {
+        string memory s = unicode"0110110110110";
+        string memory pat = unicode"11";
+        string memory to = unicode"__";
+        string memory result = unicode"0__0__0__0__0";
+        assertEq(s.toSlice().replacen(pat.toSlice(), to.toSlice(), 4), result);
+    }
+
+    function testReplacen__Unicode() public {
+        string memory s = unicode"012こんにちはこんにちはこんにちは34";
+        string memory pat = unicode"んに";
+        string memory to = unicode"📎";
+        string memory result = unicode"012こ📎ちはこ📎ちはこんにちは34";
+        assertEq(s.toSlice().replacen(pat.toSlice(), to.toSlice(), 2), result);
+    }
+
     // TODO more tests
 }

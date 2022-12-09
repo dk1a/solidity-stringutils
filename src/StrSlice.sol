@@ -95,7 +95,7 @@ using {
     // modify
     stripPrefix, stripSuffix,
     splitOnce, rsplitOnce,
-    /*replacen,*/
+    replacen,
     // iteration
     chars
 } for StrSlice global;
@@ -356,25 +356,27 @@ function rsplitOnce(StrSlice self, StrSlice pattern)
 }
 
 /**
- * TODO UNFINISHED
+ * *EXPERIMENTAL*
  * @dev Replaces first `n` matches of a pattern with another string slice.
  * Returns the result in a newly allocated string.
  * Note this does not modify the string `self` is a slice of.
  * WARNING: Requires 0 < pattern.len() <= to.len()
  */
-/*function replacen(
+function replacen(
     StrSlice self,
     StrSlice pattern,
     StrSlice to,
     uint256 n
-) pure returns (string memory str) {
+) view returns (string memory str) {
+    uint256 patLen = pattern.len();
+    uint256 toLen = to.len();
     // TODO dynamic string; atm length can be reduced but not increased
-    assert(pattern.len() >= to.len());
-    assert(pattern.len() > 0);
+    assert(patLen >= toLen);
+    assert(patLen > 0);
 
     str = new string(self.len());
     Slice iterSlice = self.asSlice();
-    Slice resultSlice = StrSlice__.from(str).asSlice();
+    Slice resultSlice = Slice__.from(bytes(str));
 
     uint256 matchNum;
     while (matchNum < n) {
@@ -384,38 +386,49 @@ function rsplitOnce(StrSlice self, StrSlice pattern)
         // copy prefix
         if (index > 0) {
             resultSlice
-                .getSubslice(0, index)
+                .getBefore(index)
                 .copyFromSlice(
-                    iterSlice.getSubslice(0, index)
+                    iterSlice.getBefore(index)
                 );
         }
 
+        uint256 indexToEnd;
+        // TODO this is fine atm only because patLen <= toLen
+        unchecked {
+            indexToEnd = index + toLen;
+        }
+
         // copy replacement
-        // TODO this is fine atm only because pattern.len() <= to.len()
         resultSlice
-            .getSubslice(index, index + to.len())
+            .getSubslice(index, indexToEnd)
             .copyFromSlice(to.asSlice());
 
         // advance slices past the match
-        iterSlice = iterSlice.getSubslice(index, index + pattern.len());
-        resultSlice = iterSlice.getSubslice(index, index + to.len());
+        iterSlice = iterSlice.getAfter(index + patLen);
+        resultSlice = resultSlice.getAfter(indexToEnd);
 
         // break if iterSlice is done
         if (iterSlice.len() == 0) {
             break;
         }
+        // safe because of `while` condition
+        unchecked {
+            matchNum++;
+        }
     }
 
     uint256 realLen = resultSlice.ptr() - StrSlice__.from(str).ptr();
     // copy suffix
-    if (iterSlice.len() > 0) {
+    uint256 iterLen = iterSlice.len();
+    if (iterLen > 0) {
         resultSlice
-            .getSubslice(0, iterSlice.len())
+            .getBefore(iterLen)
             .copyFromSlice(iterSlice);
-        realLen += iterSlice.len();
+        realLen += iterLen;
     }
     // remove extra length
     if (bytes(str).length != realLen) {
+        // TODO atm only accepting patLen <= toLen
         assert(realLen <= bytes(str).length);
         /// @solidity memory-safe-assembly
         assembly {
@@ -423,7 +436,7 @@ function rsplitOnce(StrSlice self, StrSlice pattern)
         }
     }
     return str;
-}*/
+}
 
 /**
  * @dev Returns an character iterator over the slice.
