@@ -1,13 +1,14 @@
 # StrSlice & Slice library for Solidity
 
-The library is WIP, but StrSlice already has a similar amount of functions to [Arachnid/solidity-stringutils](https://github.com/Arachnid/solidity-stringutils) and good test coverage.
-
-- Types: `StrSlice` for strings, `Slice` for bytes, `StrChar` for characters
+- Types: [StrSlice](src\StrSlice.sol) for strings, [Slice](src\Slice.sol) for bytes, [StrChar](src\StrChar.sol) for characters
+- [Gas efficient](https://github.com/dk1a/solidity-stringutils-gas)
 - Versioned releases, available for both foundry and hardhat
 - Simple imports, you only need e.g. `StrSlice` and `toSlice`
-- `StrSlice` enforces UTF-8 character boundaries
+- `StrSlice` enforces UTF-8 character boundaries; `StrChar` validates character encoding
+- Clean, well-documented and thoroughly-tested source code
 - Optional [PRBTest](https://github.com/paulrberg/prb-test) extension with assertions like `assertContains` and `assertLt` for both slices and native `bytes`, `string`
 - `Slice` and `StrSlice` are value types, not structs
+- Low-level functions like [memchr](src\utils\memchr.sol), [memcmp, memmove etc](src\utils\mem.sol)
 
 ## Install
 
@@ -28,22 +29,28 @@ import { StrSlice, toSlice } from "@dk1a/solidity-stringutils/src/StrSlice.sol";
 
 using { toSlice } for string;
 
-/// @dev Counts number of disjoint `_pat` in `_haystack` from the start
-/// Reverts on invalid UTF8
-function countOccurrences(string memory _haystack, string memory _pat) pure returns (uint256 counter) {
-    uint256 index;
-    StrSlice haystack = _haystack.toSlice();
-    StrSlice pat = _pat.toSlice();
+/// @dev Returns the content of brackets, or empty string if not found
+function extractFromBrackets(string memory stuffInBrackets) pure returns (StrSlice extracted) {
+    StrSlice s = stuffInBrackets.toSlice();
+    bool found;
 
-    while (true) {
-        index = haystack.find(pat);
-        if (index == type(uint256).max) break;
-        haystack = haystack.getSubslice(index + pat.len(), haystack.len());
-        counter++;
-    }
-    return counter;
+    (found, , s) = s.splitOnce(toSlice("("));
+    if (!found) return toSlice("");
+
+    (found, s, ) = s.rsplitOnce(toSlice(")"));
+    if (!found) return toSlice("");
+
+    return s;
 }
+/*
+assertEq(
+    extractFromBrackets("((1 + 2) + 3) + 4"),
+    toSlice("(1 + 2) + 3")
+);
+*/
 ```
+
+See [ExamplesTest](test\Examples.t.sol).
 
 Internally `StrSlice` uses `Slice` and extends it with logic for multibyte UTF-8 where necessary.
 
@@ -97,7 +104,8 @@ import { StrSlice, toSlice, StrCharsIter } from "@dk1a/solidity-stringutils/src/
 
 using { toSlice } for string;
 
-// reverts on invalid UTF8
+/// @dev Returns a StrSlice of `str` with the 2 first UTF-8 characters removed
+/// reverts on invalid UTF8
 function removeFirstTwoChars(string memory str) pure returns (StrSlice) {
     StrCharsIter memory chars = str.toSlice().chars();
     for (uint256 i; i < 2; i++) {
@@ -106,6 +114,9 @@ function removeFirstTwoChars(string memory str) pure returns (StrSlice) {
     }
     return chars.asStr();
 }
+/*
+assertEq(removeFirstTwoChars(unicode"📎!こんにちは"), unicode"こんにちは");
+*/
 ```
 
 | Method           | Description                                      |
