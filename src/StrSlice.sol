@@ -170,7 +170,7 @@ function join(StrSlice self, StrSlice[] memory strs) view returns (string memory
  * @dev Compare string slices lexicographically.
  * @return result 0 for equal, < 0 for less than and > 0 for greater than.
  */
-function cmp(StrSlice self, StrSlice other) pure returns (int result) {
+function cmp(StrSlice self, StrSlice other) pure returns (int256 result) {
     return self.asSlice().cmp(other.asSlice());
 }
 

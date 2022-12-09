@@ -18,8 +18,6 @@ contract SliceTest is PRBTest, SliceAssertions {
         }
     }
 
-    // skipping cmp tests, that's covered by SliceAssertionsTest
-
     function testLen(bytes calldata _b) public {
         assertEq(_b.toSlice().len(), _b.length);
     }
@@ -64,6 +62,40 @@ contract SliceTest is PRBTest, SliceAssertions {
         assertNotEq(b1.toSlice().keccak(), b2.toSlice().keccak());
         assertNotEq(keccak256(b1), keccak256(b2));
     }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                    COMPARE
+    //////////////////////////////////////////////////////////////////////////*/
+
+    // don't use slice assertions here, since that'd be testing them with themselves
+    function testCmp() public {
+        assertGt(toSlice("1").cmp(toSlice("0")),  0);
+        assertEq(toSlice("1").cmp(toSlice("1")),  0);
+        assertLt(toSlice("0").cmp(toSlice("1")),  0);
+        assertGt(toSlice("1").cmp(toSlice("")),   0);
+        assertEq(toSlice("").cmp(toSlice("")),    0);
+        assertLt(toSlice("").cmp(toSlice("1")),   0);
+        assertGt(toSlice("12").cmp(toSlice("1")), 0);
+        assertLt(toSlice("1").cmp(toSlice("12")), 0);
+    }
+
+    function testCmp__Long() public {
+        bytes memory b0  = "1234567890______________________________________________________0";
+        bytes memory b1  = "1234567890______________________________________________________1";
+        bytes memory b12 = "1234567890______________________________________________________12";
+        bytes memory bn  = "1234567890______________________________________________________";
+
+        assertGt(toSlice(b1).cmp(toSlice(b0)),  0);
+        assertEq(toSlice(b1).cmp(toSlice(b1)),  0);
+        assertLt(toSlice(b0).cmp(toSlice(b1)),  0);
+        assertGt(toSlice(b1).cmp(toSlice(bn)),  0);
+        assertEq(toSlice(bn).cmp(toSlice(bn)),  0);
+        assertLt(toSlice(bn).cmp(toSlice(b1)),  0);
+        assertGt(toSlice(b12).cmp(toSlice(b1)), 0);
+        assertLt(toSlice(b1).cmp(toSlice(b12)), 0);
+    }
+
+    // TODO more comparison tests for specialized funcs
 
     /*//////////////////////////////////////////////////////////////////////////
                                     CONCATENATION

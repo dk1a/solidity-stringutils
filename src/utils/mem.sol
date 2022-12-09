@@ -101,37 +101,19 @@ function memmove(uint256 ptrDest, uint256 ptrSrc, uint256 n) view {
  * https://doc.rust-lang.org/std/cmp/trait.Ord.html#lexicographical-comparison
  */
 function memcmp(uint256 ptrSelf, uint256 ptrOther, uint256 n) pure returns (int256) {
-    if (n > 32) {
-        uint256 ptrSelfEnd;
-        // safe because lenTail <= n (ptr+len is implicitly safe)
+    while (n >= 32) {
+        // safe because total addition will be <= n (ptr+len is implicitly safe)
         unchecked {
-            uint256 lenTail = n % 32;
-            ptrSelfEnd = ptrSelf + (n - lenTail);
-            n = lenTail;
-        }
-
-        // pointers have the same length, so checking just one
-        while (ptrSelf < ptrSelfEnd) {
-            uint256 chunkSelf;
-            uint256 chunkOther;
-            /// @solidity memory-safe-assembly
-            assembly {
-                chunkSelf := mload(ptrSelf)
-                chunkOther := mload(ptrOther)
-            }
-
-            if (chunkSelf == chunkOther) {
-                // safe because ptr < ptrEnd, and ptrEnd = ptr + n*32 (see lenTail)
-                unchecked {
-                    ptrSelf += 32;
-                    ptrOther += 32;
-                }
-                // an explicit continue is better for optimization here
+            uint256 nHalf = n / 2;
+            if (memeq(ptrSelf, ptrOther, nHalf)) {
+                ptrSelf += nHalf;
+                ptrOther += nHalf;
+                // (can't do n /= 2 instead of nHalf, some bytes would be skipped)
+                n -= nHalf;
+                // an explicity continue is better for optimization here
                 continue;
-            } else if (chunkSelf < chunkOther) {
-                return -1;
-            } else if (chunkSelf > chunkOther) {
-                return 1;
+            } else {
+                n -= nHalf;
             }
         }
     }

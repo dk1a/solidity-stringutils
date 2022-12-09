@@ -10,6 +10,9 @@ import { Slice, toSlice } from "../src/Slice.sol";
 using { toSlice } for bytes;
 
 contract SliceAssertionsTest is PRBTest, SliceAssertions {
+    // 100 bytes
+    bytes constant LOREM_IPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore.";
+
     /// @dev simple byte-by-byte comparison to test more complicated comparisons
     function naiveCmp(bytes memory b1, bytes memory b2) internal pure returns (int256) {
         uint256 shortest = b1.length < b2.length ? b1.length : b2.length;
@@ -34,6 +37,23 @@ contract SliceAssertionsTest is PRBTest, SliceAssertions {
         b1 = b[:b.length / 2];
         // b2 can be 1 byte longer sometimes
         b2 = b[b.length / 2:];
+
+        // this is useful to test a special case of initially similar sequences
+        // TODO fix self-referential pseudorandomness
+        uint256 random = uint256(keccak256(abi.encode(b, "randomlyAddPrefix"))) % 4;
+        if (random == 1) {
+            // prefix
+            b1 = abi.encodePacked(LOREM_IPSUM, b1);
+            b2 = abi.encodePacked(LOREM_IPSUM, b2);
+        } else if (random == 2) {
+            // suffix
+            b1 = abi.encodePacked(b1, LOREM_IPSUM);
+            b2 = abi.encodePacked(b2, LOREM_IPSUM);
+        } else if (random == 3) {
+            // prefix and suffix
+            b1 = abi.encodePacked(LOREM_IPSUM, b1, LOREM_IPSUM);
+            b2 = abi.encodePacked(LOREM_IPSUM, b2, LOREM_IPSUM);
+        }
     }
 
     function testNaiveCmp() public {

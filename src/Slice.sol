@@ -243,14 +243,15 @@ function copyFromSlice(Slice self, Slice src) view {
  * @return result 0 for equal, < 0 for less than and > 0 for greater than.
  */
 function cmp(Slice self, Slice other) pure returns (int256 result) {
-    uint256 selfPtr = self.ptr();
     uint256 selfLen = self.len();
-    uint256 otherPtr = other.ptr();
     uint256 otherLen = other.len();
-    uint256 minLen = selfLen < otherLen ? selfLen : otherLen;
+    uint256 minLen = selfLen;
+    if (otherLen < minLen) {
+        minLen = otherLen;
+    }
 
-    // check equality first
-    if (memeq(selfPtr, otherPtr, minLen)) {
+    result = memcmp(self.ptr(), other.ptr(), minLen);
+    if (result == 0) {
         // the longer slice is greater than its prefix
         // (lengths take only 16 bytes, so signed sub is safe)
         unchecked {
@@ -258,7 +259,7 @@ function cmp(Slice self, Slice other) pure returns (int256 result) {
         }
     }
     // if not equal, return the diff sign
-    return memcmp(selfPtr, otherPtr, minLen);
+    return result;
 }
 
 /// @dev self == other

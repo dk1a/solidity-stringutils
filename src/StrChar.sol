@@ -116,7 +116,7 @@ function toString(StrChar self) pure returns (string memory str) {
  * @dev Compare characters lexicographically.
  * @return result 0 for equal, < 0 for less than and > 0 for greater than.
  */
-function cmp(StrChar self, StrChar other) pure returns (int result) {
+function cmp(StrChar self, StrChar other) pure returns (int256 result) {
     uint256 selfUint = uint256(StrChar.unwrap(self));
     uint256 otherUint = uint256(StrChar.unwrap(other));
     if (selfUint > otherUint) {
