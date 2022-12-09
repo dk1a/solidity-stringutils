@@ -1,3 +1,7 @@
+## [0.2.1](https://github.com/dk1a/solidity-stringutils/compare/v0.2.0...v0.2.1) (2022-12-09)
+
+
+
 # [0.2.0](https://github.com/dk1a/solidity-stringutils/compare/v0.1.1...v0.2.0) (2022-12-09)
 
 
