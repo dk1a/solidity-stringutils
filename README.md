@@ -150,11 +150,14 @@ It's returned by some methods of `StrSlice` and `StrCharsIter`.
 | `len`            | character length in bytes                        |
 | `toBytes32`      | returns the underlying `bytes32` value           |
 | `toString`       | copy the character to a new string               |
+| `toCodePoint`    | returns the unicode code point (`ord` in python) |
 | `cmp`            | 0 for eq, < 0 for lt, > 0 for gt                 |
 | `eq`,`ne`        | ==, !=                                           |
 | `lt`,`lte`       | <, <=                                            |
 | `gt`,`gte`       | >, >=                                            |
 | `isValidUtf8`    | usually true                                     |
+
+Import `StrChar__` (static function lib) to use `StrChar__.fromCodePoint` for code point to `StrChar` conversion.
 
 `len` can return `0` *only* for invalid UTF-8 characters. It returns `1` for 0x00 (which is a valid 1-byte UTF-8 character).
 
