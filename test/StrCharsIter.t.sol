@@ -21,6 +21,25 @@ contract StrCharsIterTest is PRBTest {
             .chars().count(), 64);
     }
 
+    function testValidateUtf8() public {
+        assertTrue(toSlice("").chars().validateUtf8());
+        assertTrue(toSlice("Hello, world!").chars().validateUtf8());
+        assertTrue(toSlice(unicode"naïve").chars().validateUtf8());
+        assertTrue(toSlice(unicode"こんにちは").chars().validateUtf8());
+        assertTrue(toSlice(unicode"Z̤͔ͧ̑̓ä͖̭̈̇lͮ̒ͫǧ̗͚̚o̙̔ͮ̇͐̇Z̤͔ͧ̑̓ä͖̭̈̇lͮ̒ͫǧ̗͚̚o̙̔ͮ̇͐̇").chars().validateUtf8());
+        assertTrue(toSlice(unicode"🗮🐵🌝👤👿🗉💀🉄🍨🉔🈥🔥🏅🔪🉣📷🉳🍠🈃🉌🖷👍🌐💎🋀🌙💼💮🗹🗘💬🖜🐥🖸🈰🍦💈📆🋬🏇🖒🐜👮🊊🗒🈆🗻🏁🈰🎎🊶🉠🍖🉪🌖📎🌄💵🕷🔧🍸🋗🍁🋸")
+            .chars().validateUtf8());
+    }
+
+    function testValidateUtf8__False() public {
+        assertFalse(toSlice(string(bytes(hex"80"))).chars().validateUtf8());
+        assertFalse(toSlice(string(bytes(hex"E0"))).chars().validateUtf8());
+        assertFalse(toSlice(string(bytes(hex"C000"))).chars().validateUtf8());
+        assertFalse(toSlice(string(bytes(hex"F880808080"))).chars().validateUtf8());
+        assertFalse(toSlice(string(bytes(hex"E08080"))).chars().validateUtf8());
+        assertFalse(toSlice(string(bytes(hex"F0808080"))).chars().validateUtf8());
+    }
+
     function testCount__InvalidUTF8() public {
         vm.expectRevert(StrChar__InvalidUTF8.selector);
         toSlice(string(bytes(hex"FFFF"))).chars().count();
