@@ -6,6 +6,7 @@ import { Slice } from "./Slice.sol";
 import { StrSlice } from "./StrSlice.sol";
 import { SliceIter, SliceIter__, SliceIter__StopIteration } from "./SliceIter.sol";
 import { StrChar, StrChar__, StrChar__InvalidUTF8 } from "./StrChar.sol";
+import { isValidUtf8 } from "./utils/utf8.sol";
 
 /**
  * @title String chars iterator.
@@ -47,8 +48,8 @@ library StrCharsIter__ {
 using {
     asStr,
     ptr, len, isEmpty,
-    next, nextBack,
-    count
+    next, nextBack, unsafeNext,
+    count, validateUtf8
 } for StrCharsIter global;
 
 /**
@@ -79,7 +80,7 @@ function len(StrCharsIter memory self) pure returns (uint256) {
  * @dev Returns true if the iterator is empty.
  */
 function isEmpty(StrCharsIter memory self) pure returns (bool) {
-    return self._sliceIter().isEmpty();
+    return self._len == 0;
 }
 
 /**
@@ -87,7 +88,7 @@ function isEmpty(StrCharsIter memory self) pure returns (bool) {
  * Reverts if len == 0.
  */
 function next(StrCharsIter memory self) pure returns (StrChar char) {
-    if (self.len() == 0) revert SliceIter__StopIteration();
+    if (self._len == 0) revert SliceIter__StopIteration();
 
     bytes32 b = self._sliceIter().asSlice().toBytes32();
     // Reverts if can't make valid UTF-8
@@ -96,8 +97,9 @@ function next(StrCharsIter memory self) pure returns (StrChar char) {
     // advance the iterator
     // safe because selfLen != 0, toBytes32 zeros overflow, StrChar__.from reverts for invalid chars
     unchecked {
-        self._ptr += char.len();
-        self._len -= char.len();
+        uint256 charLen = char.len();
+        self._ptr += charLen;
+        self._len -= charLen;
     }
 
     return char;
@@ -108,7 +110,7 @@ function next(StrCharsIter memory self) pure returns (StrChar char) {
  * Reverts if len == 0.
  */
 function nextBack(StrCharsIter memory self) pure returns (StrChar char) {
-    if (self.len() == 0) revert SliceIter__StopIteration();
+    if (self._len == 0) revert SliceIter__StopIteration();
 
     // _self shares memory with self!
     SliceIter memory _self = self._sliceIter();
@@ -117,30 +119,66 @@ function nextBack(StrCharsIter memory self) pure returns (StrChar char) {
     uint256 b;
     for (uint256 i; i < 4; i++) {
         // an example of what's going on in the loop:
-        // b = 0x000000..0000
-        // nextBack = 0xAB
-        // b = 0xAB0000..0000
-        // nextBack = 0xCD
-        // b = 0xABCD00..0000
-        // ...2 more times
+        // b = 0x0000000000..00
+        // nextBack = 0x80
+        // b = 0x8000000000..00 (not valid UTF-8)
+        // nextBack = 0x92
+        // b = 0x9280000000..00 (not valid UTF-8)
+        // nextBack = 0x9F
+        // b = 0x9F92800000..00 (not valid UTF-8)
+        // nextBack = 0xF0
+        // b = 0xF09F928000..00 (valid UTF-8, break)
 
-        b = b | (
-            // get 1 byte in LSB
-            uint256(_self.nextBack())
-            // flip it to MSB
-            << ((31 - i) * 8)
-        );
+        // safe because i < 4
+        unchecked {
+            // free the space in MSB
+            b = (b >> 8) | (
+                // get 1 byte in LSB
+                uint256(_self.nextBack())
+                // flip it to MSB
+                << (31 * 8)
+            );
+        }
         // break if the char is valid
-        char = StrChar__.fromUnchecked(bytes32(b));
-        isValid = char.isValidUtf8();
+        isValid = isValidUtf8(bytes32(b));
         if (isValid) break;
     }
     if (!isValid) revert StrChar__InvalidUTF8();
 
+    // construct the character;
+    // wrap is safe, because UTF-8 was validated,
+    // and the trailing bytes are 0 (since the loop went byte-by-byte)
+    char = StrChar.wrap(bytes32(b));
+    // the iterator was already advanced by `_self.nextBack()`
+    return char;
+}
+
+/**
+ * @dev Advances the iterator and returns the next character.
+ * Does NOT validate UTF-8.
+ * WARNING: skips invalid bytes and returns invalid `StrChar` with len 0 for them!
+ */
+function unsafeNext(StrCharsIter memory self) pure returns (StrChar char) {
+    if (self._len == 0) revert SliceIter__StopIteration();
+
+    bytes32 b = self._sliceIter().asSlice().toBytes32();
+    // Does NOT revert on invalid UTF-8
+    char = StrChar.wrap(b);
+
     // advance the iterator
-    self._len -= char.len();
-    // fromUnchecked was safe, because UTF-8 was validated,
-    // and all the remaining bytes are 0 (since the loop went byte-by-byte)
+    // overflow-safe because charLen won't add up to more than byte length (i.e. self._len),
+    // but unsafe for UTF-8, because it just skips invalid bytes
+    unchecked {
+        uint256 charLen = char.len();
+        if (charLen == 0) {
+            self._ptr += 1;
+            self._len -= 1;
+        } else {
+            self._ptr += charLen;
+            self._len -= charLen;
+        }
+    }
+
     return char;
 }
 
@@ -150,11 +188,27 @@ function nextBack(StrCharsIter memory self) pure returns (StrChar char) {
  * Reverts on invalid UTF-8.
  */
 function count(StrCharsIter memory self) pure returns (uint256 result) {
-    while (!self.isEmpty()) {
+    while (self._len != 0) {
         self.next();
-        result += 1;
+        // safe because 2**256 cycles are impossible (or that much memory allocation)
+        unchecked {
+            result += 1;
+        }
     }
     return result;
+}
+
+/**
+ * @dev Consumes the iterator, validating UTF-8 characters.
+ * Note O(n) time!
+ * Returns true if all are valid; otherwise false on the first invalid UTF-8 character.
+ */
+function validateUtf8(StrCharsIter memory self) pure returns (bool) {
+    while (self._len != 0) {
+        StrChar char = self.unsafeNext();
+        if (!char.isValidUtf8()) return false;
+    }
+    return true;
 }
 
 /*//////////////////////////////////////////////////////////////////////////

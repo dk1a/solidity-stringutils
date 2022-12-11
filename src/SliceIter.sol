@@ -45,7 +45,7 @@ using { asSlice, ptr, len, isEmpty, next, nextBack } for SliceIter global;
  * @dev Views the underlying data as a subslice of the original data.
  */
 function asSlice(SliceIter memory self) pure returns (Slice slice) {
-    return Slice__.fromRawParts(self.ptr(), self.len());
+    return Slice__.fromRawParts(self._ptr, self._len);
 }
 
 /**
@@ -66,7 +66,7 @@ function len(SliceIter memory self) pure returns (uint256) {
  * @dev Returns true if the iterator is empty.
  */
 function isEmpty(SliceIter memory self) pure returns (bool) {
-    return self.asSlice().isEmpty();
+    return self._len == 0;
 }
 
 /**
@@ -74,13 +74,16 @@ function isEmpty(SliceIter memory self) pure returns (bool) {
  * Reverts if len == 0.
  */
 function next(SliceIter memory self) pure returns (uint8 value) {
-    uint256 selfPtr = self.ptr();
-    uint256 selfLen = self.len();
+    uint256 selfPtr = self._ptr;
+    uint256 selfLen = self._len;
     if (selfLen == 0) revert SliceIter__StopIteration();
 
-    // advance the iterator
-    self._ptr += 1;
-    self._len -= 1;
+    // safe because selfLen != 0 (ptr+len is implicitly safe and 1<=len)
+    unchecked {
+        // advance the iterator
+        self._ptr = selfPtr + 1;
+        self._len = selfLen - 1;
+    }
 
     return mload8(selfPtr);
 }
@@ -90,15 +93,15 @@ function next(SliceIter memory self) pure returns (uint8 value) {
  * Reverts if len == 0.
  */
 function nextBack(SliceIter memory self) pure returns (uint8 value) {
-    uint256 selfPtr = self.ptr();
-    uint256 selfLen = self.len();
+    uint256 selfPtr = self._ptr;
+    uint256 selfLen = self._len;
     if (selfLen == 0) revert SliceIter__StopIteration();
 
-    // advance the iterator
-    self._len -= 1;
-
+    // safe because selfLen != 0 (ptr+len is implicitly safe)
     unchecked {
-        // selfLen can't be 0 here
+        // advance the iterator
+        self._len = selfLen - 1;
+
         return mload8(selfPtr + (selfLen - 1));
     }
 }

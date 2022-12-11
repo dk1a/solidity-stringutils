@@ -146,7 +146,7 @@ function memeq(uint256 ptrSelf, uint256 ptrOther, uint256 n) pure returns (bool 
 }
 
 /**
- * @dev Left-aligned byte mask for partial mload/mstore.
+ * @dev Left-aligned byte mask (e.g. for partial mload/mstore).
  * For length >= 32 returns type(uint256).max
  *
  * length 0:   0x000000...000000

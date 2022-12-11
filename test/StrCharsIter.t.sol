@@ -11,7 +11,7 @@ import { StrChar__InvalidUTF8 } from "../src/StrChar.sol";
 using { toSlice } for string;
 
 contract StrCharsIterTest is PRBTest {
-	function testCount() public {
+    function testCount() public {
         assertEq(toSlice("").chars().count(), 0);
         assertEq(toSlice("Hello, world!").chars().count(), 13);
         assertEq(toSlice(unicode"naïve").chars().count(), 5);
@@ -38,7 +38,14 @@ contract StrCharsIterTest is PRBTest {
         assertEq(iter.asStr().toString(), unicode"𐀡");
         assertEq(iter.next().toString(), unicode"𐀡");
         assertEq(iter.asStr().toString(), unicode"");
+    }
 
+    function testNext__StopIteration() public {
+        StrSlice s = string(unicode"💀!").toSlice();
+        StrCharsIter memory iter = s.chars();
+
+        iter.next();
+        iter.next();
         vm.expectRevert(SliceIter__StopIteration.selector);
         iter.next();
     }
@@ -47,16 +54,23 @@ contract StrCharsIterTest is PRBTest {
         StrSlice s = string(unicode"a¡ࠀ𐀡").toSlice();
         StrCharsIter memory iter = s.chars();
 
-        assertEq(iter.next().toString(), unicode"𐀡");
+        assertEq(iter.nextBack().toString(), unicode"𐀡");
         assertEq(iter.asStr().toString(), unicode"a¡ࠀ");
-        assertEq(iter.next().toString(), unicode"ࠀ");
+        assertEq(iter.nextBack().toString(), unicode"ࠀ");
         assertEq(iter.asStr().toString(), unicode"a¡");
-        assertEq(iter.next().toString(), unicode"¡");
+        assertEq(iter.nextBack().toString(), unicode"¡");
         assertEq(iter.asStr().toString(), unicode"a");
-        assertEq(iter.next().toString(), unicode"a");
+        assertEq(iter.nextBack().toString(), unicode"a");
         assertEq(iter.asStr().toString(), unicode"");
+    }
 
+    function testNextBack__StopIteration() public {
+        StrSlice s = string(unicode"💀!").toSlice();
+        StrCharsIter memory iter = s.chars();
+
+        iter.nextBack();
+        iter.nextBack();
         vm.expectRevert(SliceIter__StopIteration.selector);
-        iter.next();
+        iter.nextBack();
     }
 }
