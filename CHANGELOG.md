@@ -1,3 +1,13 @@
+## [0.2.2](https://github.com/dk1a/solidity-stringutils/compare/v0.2.1...v0.2.2) (2022-12-11)
+
+
+### Bug Fixes
+
+* fix critical issues in SliceIter tests ([6887ae4](https://github.com/dk1a/solidity-stringutils/commit/6887ae48ceb59c789930f748d35432954f1453c0))
+* fix critical issues with nextBack in StrCharsIter and its tests; add optimizations ([6fcb355](https://github.com/dk1a/solidity-stringutils/commit/6fcb355baef25ac11a54097a20313bfe7fe96ce0))
+
+
+
 ## [0.2.1](https://github.com/dk1a/solidity-stringutils/compare/v0.2.0...v0.2.1) (2022-12-09)
 
 
