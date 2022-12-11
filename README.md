@@ -127,9 +127,16 @@ assertEq(removeFirstTwoChars(unicode"📎!こんにちは"), unicode"こんに�
 | `next`           | advance the iterator, return the next StrChar    |
 | `nextBack`       | advance from the back, return the next StrChar   |
 | `count`          | returns the number of UTF-8 characters           |
-| `ptr`            | *dangerous* get memory pointer                   |
+| `validateUtf8`   | returns true if the sequence is valid UTF-8      |
+**dangerous**
+| `unsafeNext`     | advance without UTF-8 validation, return StrChar |
+| `ptr`            | get memory pointer                               |
 
-Note that `count` consumes the iterator in O(n).
+`count` and `validateUtf8` consume the iterator in O(n).
+
+Safe methods revert on an invalid UTF-8 byte sequence.
+
+`unsafeNext` may return `StrChar` with length 0. Even if the length isn't 0, it may still be invalid. Use `StrChar.isValidUtf8()` to be sure.
 
 ## StrChar
 
