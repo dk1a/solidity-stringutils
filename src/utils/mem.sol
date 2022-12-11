@@ -101,6 +101,7 @@ function memmove(uint256 ptrDest, uint256 ptrSrc, uint256 n) view {
  * https://doc.rust-lang.org/std/cmp/trait.Ord.html#lexicographical-comparison
  */
 function memcmp(uint256 ptrSelf, uint256 ptrOther, uint256 n) pure returns (int256) {
+    // binary search for the first inequality
     while (n >= 32) {
         // safe because total addition will be <= n (ptr+len is implicitly safe)
         unchecked {

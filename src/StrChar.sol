@@ -3,6 +3,7 @@
 pragma solidity ^0.8.17;
 
 import { isValidUtf8 as _isValidUtf8, utf8CharWidth } from "./utils/utf8.sol";
+import { decodeUtf8, encodeUtf8 } from "./utils/unicode.sol";
 import { leftMask } from "./utils/mem.sol";
 
 /**
@@ -33,6 +34,14 @@ library StrChar__ {
     }
 
     /**
+    * @dev Converts a unicode code point to a `StrChar`.
+    * E.g. for '€' code point = 0x20AC; wheareas UTF-8 = 0xE282AC.
+    */
+    function fromCodePoint(uint256 code) internal pure returns (StrChar char) {
+        return StrChar.wrap(encodeUtf8(code));
+    }
+
+    /**
      * @dev Like `from`, but does NOT check UTF-8 validity.
      * If MSB of `bytes32` isn't valid UTF-8, this will return /0 character!
      * Primarily for internal use.
@@ -54,20 +63,6 @@ library StrChar__ {
     function fromUnchecked(bytes32 b) internal pure returns (StrChar char) {
         return StrChar.wrap(b);
     }
-
-    // TODO codepoint to UTF-8, and the reverse
-    /**
-    * @dev Converts a `uint32` to a `StrChar`.
-    * Note that not all code points are valid.
-    * @param i a code point. E.g. for '€' code point = 0x20AC; wheareas UTF-8 = 0xE282AC.
-    *
-    function from(uint32 i) internal pure returns (StrChar char) {
-        // U+D800–U+DFFF are invalid UTF-16 surrogate halves
-        if (i > MAX || (i >= 0xD800 && i < 0xE000)) {
-            revert StrChar__InvalidUSV();
-        }
-        
-    }*/
 }
 
 /*//////////////////////////////////////////////////////////////////////////
@@ -76,7 +71,7 @@ library StrChar__ {
 
 using { 
     len,
-    toBytes32, toString,
+    toBytes32, toString, toCodePoint,
     cmp, eq, ne, lt, lte, gt, gte,
     isValidUtf8
 } for StrChar global;
@@ -110,6 +105,13 @@ function toString(StrChar self) pure returns (string memory str) {
         mstore(add(str, 0x20), self)
     }
     return str;
+}
+
+/**
+ * @dev Converts a `StrChar` to its unicode code point (aka unicode scalar value).
+ */
+function toCodePoint(StrChar self) pure returns (uint256) {
+    return decodeUtf8(StrChar.unwrap(self));
 }
 
 /**
