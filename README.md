@@ -133,13 +133,13 @@ assertEq(removeFirstTwoChars(unicode"📎!こんにちは"), unicode"こんに�
 | `unsafeCount`    | unsafely count chars, read the source for caveats|
 | `ptr`            | get memory pointer                               |
 
-`count` and `validateUtf8` consume the iterator in O(n).
+`count`, `validateUtf8`, `unsafeCount` consume the iterator in O(n).
 
 Safe methods revert on an invalid UTF-8 byte sequence.
 
-`unsafeNext` does NOT check if iterator is empty, may underflow! Does not revert on invalid UTF-8. If returned `StrChar` is invalid, it will have length 0. Otherwise length 1-4.
+`unsafeNext` does NOT check if the iterator is empty, may underflow! Does not revert on invalid UTF-8. If returned `StrChar` is invalid, it will have length 0. Otherwise length 1-4.
 
-Internally `next`, `nextUnsafe`, `count` all use `_nextRaw`. It's very efficient, but very unsafe and complicated. Read the source and import it separately if you need it.
+Internally `next`, `unsafeNext`, `count` all use `_nextRaw`. It's very efficient, but very unsafe and complicated. Read the source and import it separately if you need it.
 
 ## StrChar
 
@@ -162,7 +162,7 @@ It's returned by some methods of `StrSlice` and `StrCharsIter`.
 
 Import `StrChar__` (static function lib) to use `StrChar__.fromCodePoint` for code point to `StrChar` conversion.
 
-`len` can return `0` *only* for invalid UTF-8 characters. It returns `1` for 0x00 (which is a valid 1-byte UTF-8 character).
+`len` can return `0` *only* for invalid UTF-8 characters. But some invalid chars *may* have non-zero len! (use `isValidUtf8` to check validity). Note that `0x00` is a valid 1-byte UTF-8 character, its len is 1.
 
 `isValidUtf8` can be false if the character was formed with an unsafe method (fromUnchecked, wrap).
 
