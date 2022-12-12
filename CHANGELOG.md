@@ -1,3 +1,13 @@
+# [0.3.0](https://github.com/dk1a/solidity-stringutils/compare/v0.2.2...v0.3.0) (2022-12-12)
+
+
+### Features
+
+* add optimizations to StrCharsIter, StrChar ([06a0b55](https://github.com/dk1a/solidity-stringutils/commit/06a0b55171af1e0d31e86327f4be6dafe2a6e6fc))
+* add unicode code point support and tests for StrChar ([07f2047](https://github.com/dk1a/solidity-stringutils/commit/07f2047962992ef18712103d8ac08bd856213cb0))
+
+
+
 ## [0.2.2](https://github.com/dk1a/solidity-stringutils/compare/v0.2.1...v0.2.2) (2022-12-11)
 
 
