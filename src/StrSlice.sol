@@ -56,7 +56,7 @@ library StrSlice__ {
      */
     function isBoundaryStart(Slice slice) internal pure returns (bool) {
         bytes32 b = slice.toBytes32();
-        return StrChar__.fromUnchecked(b).isValidUtf8();
+        return isValidUtf8(b) != 0;
     }
 }
 
@@ -213,7 +213,7 @@ function gte(StrSlice self, StrSlice other) pure returns (bool) {
  */
 function isCharBoundary(StrSlice self, uint256 index) pure returns (bool) {
     if (index < self.len()) {
-        return isValidUtf8(self.asSlice().getAfter(index).toBytes32());
+        return isValidUtf8(self.asSlice().getAfter(index).toBytes32()) != 0;
     } else if (index == self.len()) {
         return true;
     } else {
@@ -227,8 +227,9 @@ function isCharBoundary(StrSlice self, uint256 index) pure returns (bool) {
  */
 function get(StrSlice self, uint256 index) pure returns (StrChar char) {
     bytes32 b = self.asSlice().getAfterStrict(index).toBytes32();
-    if (!isValidUtf8(b)) revert StrSlice__InvalidCharBoundary();
-    return StrChar__.fromValidUtf8(b);
+    uint256 charLen = isValidUtf8(b);
+    if (charLen == 0) revert StrSlice__InvalidCharBoundary();
+    return StrChar__.fromUnchecked(b, charLen);
 }
 
 /**
@@ -443,7 +444,7 @@ function replacen(
  * The iterator yields items from either side.
  */
 function chars(StrSlice self) pure returns (StrCharsIter memory) {
-    return StrCharsIter__.from(self);
+    return StrCharsIter(self.ptr(), self.len());
 }
 
 /*//////////////////////////////////////////////////////////////////////////

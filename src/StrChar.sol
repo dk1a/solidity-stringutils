@@ -29,8 +29,9 @@ library StrChar__ {
      * @param b UTF-8 encoded character in the most significant bytes.
      */
     function from(bytes32 b) internal pure returns (StrChar char) {
-        if (!_isValidUtf8(b)) revert StrChar__InvalidUTF8();
-        return fromValidUtf8(b);
+        uint256 charLen = _isValidUtf8(b);
+        if (charLen == 0) revert StrChar__InvalidUTF8();
+        return fromUnchecked(b, charLen);
     }
 
     /**
@@ -42,26 +43,18 @@ library StrChar__ {
     }
 
     /**
-     * @dev Like `from`, but does NOT check UTF-8 validity.
-     * If MSB of `bytes32` isn't valid UTF-8, this will return /0 character!
+     * @dev Like `from`, but does NO validity checks.
+     * Uses provided `_len` instead of calculating it. This allows invalid/malformed characters.
+     *
+     * MSB of `bytes32` SHOULD be valid UTF-8.
+     * And `bytes32` SHOULD be zero-padded after the first UTF-8 character.
      * Primarily for internal use.
      */
-    function fromValidUtf8(bytes32 b) internal pure returns (StrChar char) {
-        uint256 _len = len(StrChar.wrap(b));
+    function fromUnchecked(bytes32 b, uint256 _len) internal pure returns (StrChar char) {
         return StrChar.wrap(bytes32(
             // zero-pad after the character
             uint256(b) & leftMask(_len)
         ));
-    }
-
-    /**
-     * @dev Like `from`, but does NO validity checks.
-     * MSB of `bytes32` MUST be valid UTF-8!
-     * And `bytes32` MUST be zero-padded after the first UTF-8 character!
-     * Primarily for internal use.
-     */
-    function fromUnchecked(bytes32 b) internal pure returns (StrChar char) {
-        return StrChar.wrap(b);
     }
 }
 
@@ -78,12 +71,12 @@ using {
 
 /**
  * @dev Returns the character's length in bytes (1-4).
- * Returns 0 for some (not all!) invalid characters (e.g. due to unsafe use of fromValidUtf8).
+ * Returns 0 for some (not all!) invalid characters (e.g. due to unsafe use of fromUnchecked).
  */
 function len(StrChar self) pure returns (uint256) {
     return utf8CharWidth(
         // extract the leading byte
-        uint8(StrChar.unwrap(self)[0])
+        uint256(uint8(StrChar.unwrap(self)[0]))
     );
 }
 
@@ -162,8 +155,8 @@ function gte(StrChar self, StrChar other) pure returns (bool) {
 
 /**
  * @dev Returns true if `StrChar` is valid UTF-8.
- * Can be false if it was formed with an unsafe method (fromValidUtf8, fromUnchecked, wrap).
+ * Can be false if it was formed with an unsafe method (fromUnchecked, wrap).
  */
 function isValidUtf8(StrChar self) pure returns (bool) {
-    return _isValidUtf8(StrChar.unwrap(self));
+    return _isValidUtf8(StrChar.unwrap(self)) != 0;
 }

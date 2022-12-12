@@ -129,14 +129,17 @@ assertEq(removeFirstTwoChars(unicode"📎!こんにちは"), unicode"こんに�
 | `count`          | returns the number of UTF-8 characters           |
 | `validateUtf8`   | returns true if the sequence is valid UTF-8      |
 **dangerous**
-| `unsafeNext`     | advance without UTF-8 validation, return StrChar |
+| `unsafeNext`     | advance unsafely, return the next StrChar        |
+| `unsafeCount`    | unsafely count chars, read the source for caveats|
 | `ptr`            | get memory pointer                               |
 
 `count` and `validateUtf8` consume the iterator in O(n).
 
 Safe methods revert on an invalid UTF-8 byte sequence.
 
-`unsafeNext` may return `StrChar` with length 0. Even if the length isn't 0, it may still be invalid. Use `StrChar.isValidUtf8()` to be sure.
+`unsafeNext` does NOT check if iterator is empty, may underflow! Does not revert on invalid UTF-8. If returned `StrChar` is invalid, it will have length 0. Otherwise length 1-4.
+
+Internally `next`, `nextUnsafe`, `count` all use `_nextRaw`. It's very efficient, but very unsafe and complicated. Read the source and import it separately if you need it.
 
 ## StrChar
 
@@ -161,7 +164,7 @@ Import `StrChar__` (static function lib) to use `StrChar__.fromCodePoint` for co
 
 `len` can return `0` *only* for invalid UTF-8 characters. It returns `1` for 0x00 (which is a valid 1-byte UTF-8 character).
 
-`isValidUtf8` can be false if the character was formed with an unsafe method (fromValidUtf8, fromUnchecked, wrap).
+`isValidUtf8` can be false if the character was formed with an unsafe method (fromUnchecked, wrap).
 
 ## Slice
 

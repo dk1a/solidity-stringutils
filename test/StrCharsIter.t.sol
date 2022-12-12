@@ -21,6 +21,16 @@ contract StrCharsIterTest is PRBTest {
             .chars().count(), 64);
     }
 
+    function testUnsafeCount() public {
+        assertEq(toSlice("").chars().unsafeCount(), 0);
+        assertEq(toSlice("Hello, world!").chars().unsafeCount(), 13);
+        assertEq(toSlice(unicode"naïve").chars().unsafeCount(), 5);
+        assertEq(toSlice(unicode"こんにちは").chars().unsafeCount(), 5);
+        assertEq(toSlice(unicode"Z̤͔ͧ̑̓ä͖̭̈̇lͮ̒ͫǧ̗͚̚o̙̔ͮ̇͐̇Z̤͔ͧ̑̓ä͖̭̈̇lͮ̒ͫǧ̗͚̚o̙̔ͮ̇͐̇").chars().unsafeCount(), 56);
+        assertEq(toSlice(unicode"🗮🐵🌝👤👿🗉💀🉄🍨🉔🈥🔥🏅🔪🉣📷🉳🍠🈃🉌🖷👍🌐💎🋀🌙💼💮🗹🗘💬🖜🐥🖸🈰🍦💈📆🋬🏇🖒🐜👮🊊🗒🈆🗻🏁🈰🎎🊶🉠🍖🉪🌖📎🌄💵🕷🔧🍸🋗🍁🋸")
+            .chars().unsafeCount(), 64);
+    }
+
     function testValidateUtf8() public {
         assertTrue(toSlice("").chars().validateUtf8());
         assertTrue(toSlice("Hello, world!").chars().validateUtf8());
@@ -38,6 +48,8 @@ contract StrCharsIterTest is PRBTest {
         assertFalse(toSlice(string(bytes(hex"F880808080"))).chars().validateUtf8());
         assertFalse(toSlice(string(bytes(hex"E08080"))).chars().validateUtf8());
         assertFalse(toSlice(string(bytes(hex"F0808080"))).chars().validateUtf8());
+        assertFalse(toSlice(string(abi.encodePacked(unicode"こんにちは", hex"80"))).chars().validateUtf8());
+        assertFalse(toSlice(string(abi.encodePacked(unicode"Z̤͔ͧ̑̓ä͖̭̈̇lͮ̒ͫǧ̗͚̚o̙̔ͮ̇͐̇Z̤͔ͧ̑̓ä͖̭̈̇lͮ̒ͫǧ̗͚̚o̙̔ͮ̇͐̇", hex"F0808080"))).chars().validateUtf8());
     }
 
     function testCount__InvalidUTF8() public {
@@ -91,5 +103,33 @@ contract StrCharsIterTest is PRBTest {
         iter.nextBack();
         vm.expectRevert(SliceIter__StopIteration.selector);
         iter.nextBack();
+    }
+
+    function testUnsafeNext() public {
+        StrSlice s = string(unicode"a¡ࠀ𐀡").toSlice();
+        StrCharsIter memory iter = s.chars();
+
+        assertEq(iter.unsafeNext().toString(), unicode"a");
+        assertEq(iter.asStr().toString(), unicode"¡ࠀ𐀡");
+        assertEq(iter.unsafeNext().toString(), unicode"¡");
+        assertEq(iter.asStr().toString(), unicode"ࠀ𐀡");
+        assertEq(iter.unsafeNext().toString(), unicode"ࠀ");
+        assertEq(iter.asStr().toString(), unicode"𐀡");
+        assertEq(iter.unsafeNext().toString(), unicode"𐀡");
+        assertEq(iter.asStr().toString(), unicode"");
+    }
+
+    function testUnsafeNext__InvalidUtf8() public {
+        StrSlice s = string(bytes(hex"00FF80")).toSlice();
+        StrCharsIter memory iter = s.chars();
+
+        // this works kinda weirdly for invalid chars
+        // TODO test toBytes32 too (it will be non-empty here)
+        assertEq(iter.unsafeNext().toString(), string(bytes(hex"00")));
+        assertEq(iter.asStr().toString(), string(bytes(hex"FF80")));
+        assertEq(iter.unsafeNext().toString(), "");
+        assertEq(iter.asStr().toString(), string(bytes(hex"80")));
+        assertEq(iter.unsafeNext().toString(), "");
+        assertEq(iter.asStr().toString(), "");
     }
 }

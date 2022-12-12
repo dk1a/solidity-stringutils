@@ -45,7 +45,7 @@ using { asSlice, ptr, len, isEmpty, next, nextBack } for SliceIter global;
  * @dev Views the underlying data as a subslice of the original data.
  */
 function asSlice(SliceIter memory self) pure returns (Slice slice) {
-    return Slice__.fromRawParts(self._ptr, self._len);
+    return Slice__.fromUnchecked(self._ptr, self._len);
 }
 
 /**

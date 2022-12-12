@@ -75,7 +75,7 @@ function encodeUtf8(uint256 code) pure returns (bytes32) {
  */
 function decodeUtf8(bytes32 str) pure returns (uint256) {
     uint256 leadingByte = uint256(uint8(str[0]));
-    uint256 width = utf8CharWidth(uint8(leadingByte));
+    uint256 width = utf8CharWidth(leadingByte);
 
     if (width == 1) {
         return leadingByte;

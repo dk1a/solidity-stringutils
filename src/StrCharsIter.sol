@@ -2,11 +2,12 @@
 
 pragma solidity ^0.8.17;
 
-import { Slice } from "./Slice.sol";
+import { Slice, Slice__ } from "./Slice.sol";
 import { StrSlice } from "./StrSlice.sol";
 import { SliceIter, SliceIter__, SliceIter__StopIteration } from "./SliceIter.sol";
 import { StrChar, StrChar__, StrChar__InvalidUTF8 } from "./StrChar.sol";
-import { isValidUtf8 } from "./utils/utf8.sol";
+import { isValidUtf8, utf8CharWidth } from "./utils/utf8.sol";
+import { leftMask } from "./utils/mem.sol";
 
 /**
  * @title String chars iterator.
@@ -49,7 +50,7 @@ using {
     asStr,
     ptr, len, isEmpty,
     next, nextBack, unsafeNext,
-    count, validateUtf8
+    count, validateUtf8, unsafeCount
 } for StrCharsIter global;
 
 /**
@@ -57,7 +58,7 @@ using {
  */
 function asStr(StrCharsIter memory self) pure returns (StrSlice slice) {
     return StrSlice.wrap(Slice.unwrap(
-        self._sliceIter().asSlice()
+        self.asSlice()
     ));
 }
 
@@ -86,28 +87,24 @@ function isEmpty(StrCharsIter memory self) pure returns (bool) {
 /**
  * @dev Advances the iterator and returns the next character.
  * Reverts if len == 0.
+ * Reverts on invalid UTF-8.
  */
-function next(StrCharsIter memory self) pure returns (StrChar char) {
+function next(StrCharsIter memory self) pure returns (StrChar) {
     if (self._len == 0) revert SliceIter__StopIteration();
-
-    bytes32 b = self._sliceIter().asSlice().toBytes32();
-    // Reverts if can't make valid UTF-8
-    char = StrChar__.from(b);
-
-    // advance the iterator
-    // safe because selfLen != 0, toBytes32 zeros overflow, StrChar__.from reverts for invalid chars
+    (bytes32 b, uint256 charLen) = self._nextRaw(true);
+    // safe because _nextRaw guarantees charLen <= selfLen as long as selfLen != 0.
     unchecked {
-        uint256 charLen = char.len();
-        self._ptr += charLen;
+        // charLen > 0 because of `revertOnInvalid` flag
         self._len -= charLen;
     }
-
-    return char;
+    // safe because _nextRaw reverts on invalid UTF-8
+    return StrChar__.fromUnchecked(b, charLen);
 }
 
 /**
  * @dev Advances the iterator from the back and returns the next character.
  * Reverts if len == 0.
+ * Reverts on invalid UTF-8.
  */
 function nextBack(StrCharsIter memory self) pure returns (StrChar char) {
     if (self._len == 0) revert SliceIter__StopIteration();
@@ -140,8 +137,10 @@ function nextBack(StrCharsIter memory self) pure returns (StrChar char) {
             );
         }
         // break if the char is valid
-        isValid = isValidUtf8(bytes32(b));
-        if (isValid) break;
+        if (isValidUtf8(bytes32(b)) != 0) {
+            isValid = true;
+            break;
+        }
     }
     if (!isValid) revert StrChar__InvalidUTF8();
 
@@ -155,31 +154,28 @@ function nextBack(StrCharsIter memory self) pure returns (StrChar char) {
 
 /**
  * @dev Advances the iterator and returns the next character.
- * Does NOT validate UTF-8.
- * WARNING: skips invalid bytes and returns invalid `StrChar` with len 0 for them!
+ * Does NOT validate iterator length. It could underflow!
+ * Does NOT revert on invalid UTF-8.
+ * WARNING: for invalid UTF-8 bytes, advances by 1 and returns an invalid `StrChar` with len 0!
  */
 function unsafeNext(StrCharsIter memory self) pure returns (StrChar char) {
-    if (self._len == 0) revert SliceIter__StopIteration();
-
-    bytes32 b = self._sliceIter().asSlice().toBytes32();
-    // Does NOT revert on invalid UTF-8
-    char = StrChar.wrap(b);
-
-    // advance the iterator
-    // overflow-safe because charLen won't add up to more than byte length (i.e. self._len),
-    // but unsafe for UTF-8, because it just skips invalid bytes
-    unchecked {
-        uint256 charLen = char.len();
-        if (charLen == 0) {
-            self._ptr += 1;
-            self._len -= 1;
-        } else {
-            self._ptr += charLen;
+    // _nextRaw guarantees charLen <= selfLen IF selfLen != 0
+    (bytes32 b, uint256 charLen) = self._nextRaw(false);
+    if (charLen > 0) {
+        // safe IF the caller ensures that self._len != 0
+        unchecked {
             self._len -= charLen;
         }
+        // ALWAYS produces a valid character
+        return StrChar__.fromUnchecked(b, charLen);
+    } else {
+        // safe IF the caller ensures that self._len != 0
+        unchecked {
+            self._len -= 1;
+        }
+        // NEVER produces a valid character (this is always a single 0x80-0xFF byte)
+        return StrChar__.fromUnchecked(b, 1);
     }
-
-    return char;
 }
 
 /**
@@ -188,13 +184,20 @@ function unsafeNext(StrCharsIter memory self) pure returns (StrChar char) {
  * Reverts on invalid UTF-8.
  */
 function count(StrCharsIter memory self) pure returns (uint256 result) {
-    while (self._len != 0) {
-        self.next();
-        // safe because 2**256 cycles are impossible (or that much memory allocation)
+    uint256 endPtr;
+    // (ptr+len is implicitly safe)
+    unchecked {
+        endPtr = self._ptr + self._len;
+    }
+    while (self._ptr < endPtr) {
+        self._nextRaw(true);
+        // +1 is safe because 2**256 cycles are impossible
         unchecked {
             result += 1;
         }
     }
+    // _nextRaw does NOT modify len to allow optimizations like setting it once at the end
+    self._len = 0;
     return result;
 }
 
@@ -204,18 +207,151 @@ function count(StrCharsIter memory self) pure returns (uint256 result) {
  * Returns true if all are valid; otherwise false on the first invalid UTF-8 character.
  */
 function validateUtf8(StrCharsIter memory self) pure returns (bool) {
-    while (self._len != 0) {
-        StrChar char = self.unsafeNext();
-        if (!char.isValidUtf8()) return false;
+    uint256 endPtr;
+    // (ptr+len is implicitly safe)
+    unchecked {
+        endPtr = self._ptr + self._len;
+    }
+    while (self._ptr < endPtr) {
+        (, uint256 charLen) = self._nextRaw(false);
+        if (charLen == 0) return false;
     }
     return true;
+}
+
+/**
+ * @dev VERY UNSAFE - a single invalid UTF-8 character can severely alter the result!
+ * Consumes the iterator, counting the number of UTF-8 characters.
+ * Significantly faster than safe `count`, especially for long mutlibyte strings.
+ *
+ * Note `count` is actually a bit more efficient than `validateUtf8`.
+ * `count` is much more efficient than calling `validateUtf8` and `unsafeCount` together.
+ * Use `unsafeCount` only when you are already certain that UTF-8 is valid.
+ * If you want speed and no validation, just use byte length, it's faster and more predictably wrong.
+ *
+ * Some gas usage metrics:
+ * 1 ascii char:
+ *   count:       571 gas
+ *   unsafeCount: 423 gas
+ * 100 ascii chars:
+ *   count:       27406 gas
+ *   unsafeCount: 12900 gas
+ * 1000 chinese chars (3000 bytes):
+ *   count:       799305 gas
+ *   unsafeCount: 178301 gas
+ */
+function unsafeCount(StrCharsIter memory self) pure returns (uint256 result) {
+    uint256 endPtr;
+    // (ptr+len is implicitly safe)
+    unchecked {
+        endPtr = self._ptr + self._len;
+    }
+    while (self._ptr < endPtr) {
+        // unchecked mload
+        // (unsafe, the last character could move the pointer past the boundary, but only once)
+        /// @solidity memory-safe-assembly
+        uint256 leadingByte;
+        assembly {
+            leadingByte := byte(0, mload(
+                // load self._ptr (this is an optimization trick, since it's 1st in the struct)
+                mload(self)
+            ))
+        }
+        unchecked {
+            // this is a very unsafe version of `utf8CharWidth`,
+            // basically 1 invalid UTF-8 character can severely change the count result
+            // (no real infinite loop risks, only one potential corrupt memory read)
+            if (leadingByte < 0x80) {
+                self._ptr += 1;
+            } else if (leadingByte < 0xE0) {
+                self._ptr += 2;
+            } else if (leadingByte < 0xF0) {
+                self._ptr += 3;
+            } else {
+                self._ptr += 4;
+            }
+            // +1 is safe because 2**256 cycles are impossible
+            result += 1;
+        }
+    }
+    self._len = 0;
+
+    return result;
 }
 
 /*//////////////////////////////////////////////////////////////////////////
                             FILE-LEVEL FUNCTIONS
 //////////////////////////////////////////////////////////////////////////*/
 
-using { _sliceIter } for StrCharsIter;
+using { asSlice, _nextRaw, _sliceIter } for StrCharsIter;
+
+/**
+ * @dev Views the underlying data as a `bytes` subslice of the original data.
+ */
+function asSlice(StrCharsIter memory self) pure returns (Slice slice) {
+    return Slice__.fromUnchecked(self._ptr, self._len);
+}
+
+/**
+ * @dev Used internally to efficiently reuse iteration logic. Has a lot of caveats.
+ * NEITHER checks NOR modifies iterator length.
+ * (Caller MUST guarantee that len != 0. Caller MUST modify len correctly themselves.)
+ * Does NOT form the character properly, and returns raw unmasked bytes and length.
+ * Does advance the iterator pointer.
+ *
+ * Validates UTF-8.
+ * For valid chars advances the pointer by charLen.
+ * For invalid chars behaviour depends on `revertOnInvalid`:
+ * revertOnInvalid == true: revert.
+ * revertOnInvalid == false: advance the pointer by 1, but return charLen 0.
+ *
+ * @return b raw unmasked bytes; if not discarded, then charLen SHOULD be used to mask it.
+ * @return charLen length of a valid UTF-8 char; 0 for invalid chars.
+ * Guarantees that charLen <= self._len (as long as self._len != 0, which is the caller's guarantee)
+ */
+function _nextRaw(StrCharsIter memory self, bool revertOnInvalid)
+    pure
+    returns (bytes32 b, uint256 charLen)
+{
+    // unchecked mload
+    // (isValidUtf8 only checks the 1st character, which exists since caller guarantees len != 0)
+    /// @solidity memory-safe-assembly
+    assembly {
+        b := mload(
+            // load self._ptr (this is an optimization trick, since it's 1st in the struct)
+            mload(self)
+        )
+    }
+    // validate character (0 => invalid; 1-4 => valid)
+    charLen = isValidUtf8(b);
+
+    if (charLen > self._len) {
+        // mload didn't check bounds,
+        // so a character that goes out of bounds could've been seen as valid.
+        if (revertOnInvalid) revert StrChar__InvalidUTF8();
+        // safe because caller guarantees _len != 0
+        unchecked {
+            self._ptr += 1;
+        }
+        // invalid
+        return (b, 0);
+    } else if (charLen == 0) {
+        if (revertOnInvalid) revert StrChar__InvalidUTF8();
+        // safe because caller guarantees _len != 0
+        unchecked {
+            self._ptr += 1;
+        }
+        // invalid
+        return (b, 0);
+    } else {
+        // safe because of the `charLen > self._len` check earlier
+        unchecked {
+            self._ptr += charLen;
+        }
+        // valid
+        return (b, charLen);
+    }
+}
 
 /**
  * @dev Returns the underlying `SliceIter`.
