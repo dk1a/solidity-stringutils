@@ -6,6 +6,7 @@ import { Slice, Slice__, Slice__OutOfBounds } from "./Slice.sol";
 import { StrChar, StrChar__ } from "./StrChar.sol";
 import { StrCharsIter, StrCharsIter__ } from "./StrCharsIter.sol";
 import { isValidUtf8 } from "./utils/utf8.sol";
+import { memIsAscii } from "./utils/memascii.sol";
 import { PackPtrLen } from "./utils/PackPtrLen.sol";
 
 /**
@@ -97,7 +98,9 @@ using {
     splitOnce, rsplitOnce,
     replacen,
     // iteration
-    chars
+    chars,
+    // ascii
+    isAscii
 } for StrSlice global;
 
 /**
@@ -445,6 +448,17 @@ function replacen(
  */
 function chars(StrSlice self) pure returns (StrCharsIter memory) {
     return StrCharsIter(self.ptr(), self.len());
+}
+
+/**
+ * @dev Checks if all characters are within the ASCII range.
+ * 
+ * Note this does NOT explicitly validate UTF-8.
+ * Whereas ASCII certainly is valid UTF-8, non-ASCII *could* be invalid UTF-8.
+ * Use `StrCharsIter` for explicit validation.
+ */
+function isAscii(StrSlice self) pure returns (bool) {
+    return memIsAscii(self.ptr(), self.len());
 }
 
 /*//////////////////////////////////////////////////////////////////////////

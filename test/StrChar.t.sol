@@ -299,6 +299,25 @@ contract StrCharTest is PRBTest {
         assertEq(StrChar__.from(bytes32(hex"F09080801111")).toCodePoint(), 0x10000);
         assertEq(StrChar__.from(bytes32(hex"F090808000FF")).toCodePoint(), 0x10000);
     }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                    ASCII
+    //////////////////////////////////////////////////////////////////////////*/
+
+    function testIsAscii() public {
+        for (uint256 i; i < 0x80; i++) {
+            assertTrue(StrChar__.fromCodePoint(i).isAscii());
+        }
+
+        for (uint256 i = 0x80; i < 0x20000; i++) {
+            if (0xD800 <= i && i <= 0xDFFF) {
+                // skip surrogate halves
+                continue;
+            }
+            assertFalse(StrChar__.fromCodePoint(i).isAscii());
+        }
+        assertFalse(StrChar__.fromCodePoint(0x10FFFF).isAscii());
+    }
 }
 
 contract StrCharRevertHelper {

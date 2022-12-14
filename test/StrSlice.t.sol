@@ -218,4 +218,22 @@ contract StrSliceTest is PRBTest, StrSliceAssertions {
     }
 
     // TODO more tests
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                    ASCII
+    //////////////////////////////////////////////////////////////////////////*/
+
+    function testIsAscii() public {
+        string memory ascii = hex"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f";
+        assertTrue(toSlice("").isAscii());
+        assertTrue(toSlice("a").isAscii());
+        assertTrue(toSlice(ascii).isAscii());
+        assertTrue(toSlice(string(abi.encodePacked(ascii, ascii, ascii, ascii))).isAscii());
+        assertFalse(toSlice(unicode"📎").isAscii());
+        assertFalse(toSlice(unicode"012こ").isAscii());
+        assertFalse(toSlice(string(bytes(hex"FF"))).isAscii());
+        assertFalse(toSlice(string(abi.encodePacked(hex"80", ascii))).isAscii());
+        assertFalse(toSlice(string(abi.encodePacked(ascii, hex"80"))).isAscii());
+        assertFalse(toSlice(string(abi.encodePacked(ascii, unicode"📎"))).isAscii());
+    }
 }

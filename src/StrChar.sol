@@ -66,7 +66,8 @@ using {
     len,
     toBytes32, toString, toCodePoint,
     cmp, eq, ne, lt, lte, gt, gte,
-    isValidUtf8
+    isValidUtf8,
+    isAscii
 } for StrChar global;
 
 /**
@@ -159,4 +160,11 @@ function gte(StrChar self, StrChar other) pure returns (bool) {
  */
 function isValidUtf8(StrChar self) pure returns (bool) {
     return _isValidUtf8(StrChar.unwrap(self)) != 0;
+}
+
+/**
+ * @dev Returns true if `StrChar` is within the ASCII range.
+ */
+function isAscii(StrChar self) pure returns (bool) {
+    return StrChar.unwrap(self)[0] < 0x80;
 }

@@ -89,6 +89,8 @@ Internally `StrSlice` uses `Slice` and extends it with logic for multibyte UTF-8
 |                  | *replacen requires 0 < pattern.len() <= to.len()*|
 **iterate**
 | `chars`          | character iterator over the slice                |
+**ascii**
+| `isAscii`        | true if all chars are ASCII                      |
 **dangerous**
 | `asSlice`        | get underlying Slice                             |
 | `ptr`            | get memory pointer                               |
@@ -159,6 +161,7 @@ It's returned by some methods of `StrSlice` and `StrCharsIter`.
 | `lt`,`lte`       | <, <=                                            |
 | `gt`,`gte`       | >, >=                                            |
 | `isValidUtf8`    | usually true                                     |
+| `isAscii`        | true if the char is ASCII                        |
 
 Import `StrChar__` (static function lib) to use `StrChar__.fromCodePoint` for code point to `StrChar` conversion.
 
