@@ -1,3 +1,13 @@
+## [0.3.1](https://github.com/dk1a/solidity-stringutils/compare/v0.3.0...v0.3.1) (2022-12-15)
+
+
+### Features
+
+* add fast uint to string conversion ([5a975fe](https://github.com/dk1a/solidity-stringutils/commit/5a975fe509ad6e5cac5f07590f28faf6b2ca65e5))
+* add isAscii ([dfb9916](https://github.com/dk1a/solidity-stringutils/commit/dfb9916b4477e34c382016f2b977f24389812685))
+
+
+
 # [0.3.0](https://github.com/dk1a/solidity-stringutils/compare/v0.2.2...v0.3.0) (2022-12-12)
 
 
