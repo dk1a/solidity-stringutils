@@ -247,10 +247,10 @@ function unsafeCount(StrCharsIter memory self) pure returns (uint256 result) {
         endPtr = self._ptr + self._len;
     }
     while (self._ptr < endPtr) {
+        uint256 leadingByte;
         // unchecked mload
         // (unsafe, the last character could move the pointer past the boundary, but only once)
         /// @solidity memory-safe-assembly
-        uint256 leadingByte;
         assembly {
             leadingByte := byte(0, mload(
                 // load self._ptr (this is an optimization trick, since it's 1st in the struct)
