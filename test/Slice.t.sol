@@ -98,6 +98,117 @@ contract SliceTest is PRBTest, SliceAssertions {
     // TODO more comparison tests for specialized funcs
 
     /*//////////////////////////////////////////////////////////////////////////
+                                        COPY
+    //////////////////////////////////////////////////////////////////////////*/
+
+    function _copyFromValue(uint256 length, bytes32 value) internal pure returns (Slice slice) {
+        bytes memory b = new bytes(length);
+        slice = b.toSlice();
+        slice.copyFromValue(value, length);
+    }
+
+    function _copyFromValueRightAligned(uint256 length, bytes32 value) internal pure returns (Slice slice) {
+        bytes memory b = new bytes(length);
+        slice = b.toSlice();
+        slice.copyFromValueRightAligned(value, length);
+    }
+
+    function testCopyFromSlice(bytes calldata _b) public {
+        Slice sliceSrc = _b.toSlice();
+
+        bytes memory bDest = new bytes(_b.length);
+        Slice sliceDest = bDest.toSlice();
+        sliceDest.copyFromSlice(sliceSrc);
+
+        assertEq(sliceDest, sliceSrc);
+    }
+
+    function testCopyFromValue__Fuzz(bytes32 value) public {
+        bytes memory b = new bytes(32);
+        Slice slice = b.toSlice();
+
+        slice.copyFromValue(value, 32);
+
+        assertEq(slice, abi.encodePacked(value));
+    }
+
+    function testCopyFromValue__LeftAligned() public {
+        bytes1 v1 = "1";
+        assertEq(_copyFromValue(1, bytes32(v1)), abi.encodePacked(v1));
+
+        bytes2 v2 = "22";
+        assertEq(_copyFromValue(2, bytes32(v2)), abi.encodePacked(v2));
+
+        bytes16 v16 = "1234567890123456";
+        assertEq(_copyFromValue(16, bytes32(v16)), abi.encodePacked(v16));
+
+        bytes25 v25 = "1234567890123456789012345";
+        assertEq(_copyFromValue(25, bytes32(v25)), abi.encodePacked(v25));
+
+        bytes32 v32 = "12345678901234567890123456789012";
+        assertEq(_copyFromValue(32, bytes32(v32)), abi.encodePacked(v32));
+    }
+
+    function testCopyFromValue__RightAligned() public {
+        uint8 v1 = 1;
+        assertEq(_copyFromValueRightAligned(1, bytes32(uint256(v1))), abi.encodePacked(v1));
+
+        uint16 v2 = 1000;
+        assertEq(_copyFromValueRightAligned(2, bytes32(uint256(v2))), abi.encodePacked(v2));
+
+        uint128 v16 = 2**15 + 1;
+        assertEq(_copyFromValueRightAligned(16, bytes32(uint256(v16))), abi.encodePacked(v16));
+
+        uint200 v25 = 123;
+        assertEq(_copyFromValueRightAligned(25, bytes32(uint256(v25))), abi.encodePacked(v25));
+
+        uint256 v32 = type(uint256).max;
+        assertEq(_copyFromValueRightAligned(32, bytes32(uint256(v32))), abi.encodePacked(v32));
+    }
+
+    function testCopyFromValue__Multiple() public {
+        bytes memory b = new bytes(86);
+        Slice slice = b.toSlice();
+
+        slice.copyFromValueRightAligned(bytes32(uint256(1)), 1);
+        slice = slice.getAfter(1);
+
+        slice.copyFromValueRightAligned(bytes32(uint256(1000)), 2);
+        slice = slice.getAfter(2);
+
+        slice.copyFromValue("12345678901", 11);
+        slice = slice.getAfter(11);
+
+        slice.copyFromValue("12345678901234567890123456789012", 32);
+        slice = slice.getAfter(32);
+
+        // address to bytes20 has an autoshift
+        slice.copyFromValue(bytes20(address(this)), 20);
+        slice = slice.getAfter(20);
+
+        // try it without autoshift too
+        address addr = address(this);
+        bytes32 addrRaw;
+        assembly {
+            addrRaw := addr
+        }
+        slice.copyFromValueRightAligned(addrRaw, 20);
+        slice = slice.getAfter(20);
+
+        assertEq(
+            b,
+            abi.encodePacked(
+                uint8(1),
+                uint16(1000),
+                bytes11("12345678901"),
+                bytes32("12345678901234567890123456789012"),
+                bytes20(address(this)),
+                address(this)
+            )
+        );
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////
                                     CONCATENATION
     //////////////////////////////////////////////////////////////////////////*/
 

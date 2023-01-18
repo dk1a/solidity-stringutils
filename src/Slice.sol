@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import { mload8, memmove, memcmp, memeq, leftMask } from "./utils/mem.sol";
+import { mload8, memmove, memcmp, memeq, mstoreN, leftMask } from "./utils/mem.sol";
 import { memchr, memrchr } from "./utils/memchr.sol";
 import { PackPtrLen } from "./utils/PackPtrLen.sol";
 
@@ -83,7 +83,7 @@ using {
     // concatenation
     add, join,
     // copy
-    copyFromSlice,
+    copyFromSlice, copyFromValue, copyFromValueRightAligned,
     // compare
     cmp, eq, ne, lt, lte, gt, gte,
     // index
@@ -236,6 +236,36 @@ function copyFromSlice(Slice self, Slice src) view {
     if (selfLen != src.len()) revert Slice__LengthMismatch();
 
     memmove(self.ptr(), src.ptr(), selfLen);
+}
+
+/**
+ * @dev Copies `length` bytes from `value` into `self`, starting from MSB.
+ */
+function copyFromValue(Slice self, bytes32 value, uint256 length) pure {
+    if (length > self.len() || length > 32) {
+        revert Slice__OutOfBounds();
+    }
+
+    mstoreN(self.ptr(), value, length);
+}
+
+/**
+ * @dev Shifts `value` to MSB by (32 - `length`),
+ * then copies `length` bytes from `value` into `self`, starting from MSB.
+ * (this is for right-aligned values like uint32, so you don't have to shift them to MSB yourself)
+ */
+function copyFromValueRightAligned(Slice self, bytes32 value, uint256 length) pure {
+    if (length > self.len() || length > 32) {
+        revert Slice__OutOfBounds();
+    }
+    if (length < 32) {
+        // safe because length < 32
+        unchecked {
+            value <<= (32 - length) * 8;
+        }
+    }
+
+    mstoreN(self.ptr(), value, length);
 }
 
 /**
