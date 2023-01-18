@@ -1,3 +1,17 @@
+## [0.3.3](https://github.com/dk1a/solidity-stringutils/compare/v0.3.1...v0.3.3) (2023-01-18)
+
+
+### Bug Fixes
+
+* correct an annotation placement ([d73c0e6](https://github.com/dk1a/solidity-stringutils/commit/d73c0e62c51a3f538ba91170a42678094aea402c))
+
+
+### Features
+
+* **Slice:** add copyFromValue ([120e375](https://github.com/dk1a/solidity-stringutils/commit/120e37525234a5d148f4fe6ec93cac3feb45982b))
+
+
+
 ## [0.3.2](https://github.com/dk1a/solidity-stringutils/compare/v0.3.1...v0.3.2) (2022-12-21)
 
 
